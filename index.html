@@ -125,6 +125,7 @@
                 <select id="new-rol" class="p-2 border rounded">
                     <option value="jefe_pista">Jefe de Pista</option>
                     <option value="cajero">Cajero</option>
+                    <option value="mecanico">Mecánico</option>
                     <option value="admin">Administrador</option>
                 </select>
                 <button onclick="crearUsuario()" class="bg-blue-600 text-white p-2 rounded">Crear Usuario</button>
@@ -847,7 +848,7 @@
         async function editarUsuario(id, username, rol) {
             const nuevoUsername = prompt("Nuevo nombre de usuario:", username);
             if (!nuevoUsername) return;
-            const nuevoRol = prompt("Nuevo rol (admin, jefe_pista, cajero):", rol);
+            const nuevoRol = prompt("Nuevo rol (admin, jefe_pista, cajero, mecanico):", rol);
             if (!nuevoRol) return;
             const nuevaPass = prompt("Nueva contraseña (dejar en blanco para mantener la actual):");
 
