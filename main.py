@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.responses import FileResponse
@@ -152,10 +153,8 @@ def check_cajero_or_admin(current_user: models.Usuario = Depends(get_current_use
     return current_user
 
 @app.get("/")
-
-# Para que funcione en la nube, necesitamos que el puerto sea dinámico
-import os
-PORT = int(os.environ.get("PORT", 8000))
+async def home():
+    return FileResponse("index.html")
 
 # --- Gestión de Usuarios (Solo Admin) ---
 
