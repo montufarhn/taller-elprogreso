@@ -52,6 +52,7 @@ class OrdenTrabajo(Base):
     estado = Column(String, default="Pendiente") # 'Pendiente', 'Pagada'
     metodo_pago = Column(String, nullable=True)
     referencia_pago = Column(String, nullable=True)
+    taller_completado = Column(Boolean, default=False)
     fecha = Column(DateTime, default=datetime.utcnow)
 
 class ItemCatalogo(Base):

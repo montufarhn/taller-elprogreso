@@ -406,6 +406,16 @@ def anular_factura(orden_id: int, db: Session = Depends(get_db), user: models.Us
     db.commit()
     return {"message": "Factura anulada exitosamente"}
 
+# Pantalla Taller: Marcar trabajo como completado
+@app.post("/taller/completar/{orden_id}")
+def completar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
+    orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    orden.taller_completado = True
+    db.commit()
+    return {"message": "Trabajo marcado como completado"}
+
 # Pantalla Taller: Listar Trabajos Pendientes
 @app.get("/taller/pendientes")
 def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
@@ -413,7 +423,11 @@ def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = 
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).outerjoin(
         models.Vehiculo, models.OrdenTrabajo.vehiculo_id == models.Vehiculo.id
-    ).filter(models.OrdenTrabajo.estado == "Pendiente", models.OrdenTrabajo.tipo == "Orden").all()
+    ).filter(
+        models.OrdenTrabajo.taller_completado == False, 
+        models.OrdenTrabajo.tipo == "Orden",
+        models.OrdenTrabajo.estado != "Anulada"
+    ).all()
     
     return [{
         "id": o.id,
@@ -421,5 +435,6 @@ def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = 
         "cliente_nombre": c.nombre,
         "vehiculo_marca": v.marca if v else "N/A",
         "vehiculo_modelo": v.modelo if v else "N/A",
-        "fecha": o.fecha
+        "fecha": o.fecha,
+        "estado_pago": o.estado
     } for o, c, v in query]
