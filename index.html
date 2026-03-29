@@ -334,7 +334,9 @@
             document.title = `Panel ${currentUser.rol.toUpperCase().replace('_', ' ')} - Taller Pro Auto`;
 
             // Botones de navegación
-            document.getElementById('nav-documentos').classList.remove('hidden');
+            if (currentUser.rol !== 'mecanico') {
+                document.getElementById('nav-documentos').classList.remove('hidden');
+            }
 
             if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') {
                 document.getElementById('nav-clientes').classList.remove('hidden');
@@ -364,6 +366,7 @@
 
             // Abrir pestaña inicial según el rol
             if (currentUser.rol === 'admin') switchTab('tab-usuarios');
+            else if (currentUser.rol === 'mecanico') switchTab('tab-taller');
             else switchTab('tab-documentos');
 
             // Cargar datos del negocio inmediatamente para tenerlos listos para facturación
@@ -559,6 +562,8 @@
             const desc = itemsSeleccionados.map(i => `${i.cantidad}|${i.nombre}|${i.precio}`).join(";");
             const total = parseFloat(document.getElementById('total-orden').innerText);
             
+            const requiereTaller = itemsSeleccionados.some(i => i.tipo === 'Mano de Obra');
+
             const params = new URLSearchParams({
                 cliente_id: clienteId,
                 descripcion: desc,
@@ -568,7 +573,8 @@
                 marca: document.getElementById('v-marca').value,
                 modelo: document.getElementById('v-modelo').value,
                 anio: document.getElementById('v-anio').value || 0,
-                color: document.getElementById('v-color').value
+                color: document.getElementById('v-color').value,
+                requiere_taller: requiereTaller
             });
 
             const respOrd = await apiRequest(`${API_BASE_URL}/ordenes/?${params.toString()}`, {

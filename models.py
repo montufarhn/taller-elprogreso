@@ -53,6 +53,7 @@ class OrdenTrabajo(Base):
     metodo_pago = Column(String, nullable=True)
     referencia_pago = Column(String, nullable=True)
     taller_completado = Column(Boolean, default=False)
+    requiere_taller = Column(Boolean, default=False)
     fecha = Column(DateTime, default=datetime.utcnow)
 
 class ItemCatalogo(Base):

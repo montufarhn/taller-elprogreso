@@ -323,6 +323,7 @@ def crear_orden(
     modelo: Optional[str] = None,
     anio: Optional[int] = None,
     color: Optional[str] = None,
+    requiere_taller: bool = False,
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(get_current_user)
 ):
@@ -341,7 +342,8 @@ def crear_orden(
         vehiculo_id=vehiculo.id if vehiculo else None,
         descripcion=descripcion, 
         total=total, 
-        tipo=tipo
+        tipo=tipo,
+        requiere_taller=requiere_taller
     )
     db.add(nueva_orden)
     db.commit()
@@ -426,7 +428,8 @@ def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = 
     ).filter(
         models.OrdenTrabajo.taller_completado == False, 
         models.OrdenTrabajo.tipo == "Orden",
-        models.OrdenTrabajo.estado != "Anulada"
+        models.OrdenTrabajo.estado != "Anulada",
+        models.OrdenTrabajo.requiere_taller == True
     ).all()
     
     return [{
