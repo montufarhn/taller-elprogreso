@@ -137,7 +137,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos")
     
     access_token = jwt.encode({"sub": user.username, "rol": user.rol}, SECRET_KEY, algorithm=ALGORITHM)
-    return {"access_token": access_token, "token_type": "bearer", "rol": user.rol}
+    return {"access_token": access_token, "token_type": "bearer", "rol": user.rol, "user_id": user.id}
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
@@ -454,12 +454,40 @@ def anular_factura(orden_id: int, db: Session = Depends(get_db), user: models.Us
     db.commit()
     return {"message": "Factura anulada exitosamente"}
 
+# Pantalla Taller: Asignarse un trabajo
+@app.post("/taller/asignar/{orden_id}")
+def asignar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
+    # Verificar si el mecánico ya tiene un trabajo activo
+    trabajo_activo = db.query(models.OrdenTrabajo).filter(
+        models.OrdenTrabajo.mecanico_id == current_user.id,
+        models.OrdenTrabajo.taller_completado == False
+    ).first()
+    
+    if trabajo_activo:
+        raise HTTPException(status_code=400, detail="Ya tienes un trabajo en progreso. Termínalo antes de tomar otro.")
+
+    orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden.mecanico_id:
+        raise HTTPException(status_code=400, detail="Este trabajo ya fue tomado por otro mecánico")
+
+    orden.mecanico_id = current_user.id
+    orden.inicio_trabajo = datetime.now(timezone.utc)
+    db.commit()
+    return {"message": "Trabajo asignado e iniciado"}
+
 # Pantalla Taller: Marcar trabajo como completado
 @app.post("/taller/completar/{orden_id}")
 def completar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
+    
+    if orden.mecanico_id != current_user.id and current_user.rol != "admin":
+        raise HTTPException(status_code=403, detail="No puedes completar un trabajo asignado a otro mecánico")
+
+    orden.fin_trabajo = datetime.now(timezone.utc)
     orden.taller_completado = True
     db.commit()
     return {"message": "Trabajo marcado como completado"}
@@ -485,5 +513,7 @@ def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = 
         "vehiculo_marca": v.marca if v else "N/A",
         "vehiculo_modelo": v.modelo if v else "N/A",
         "fecha": o.fecha,
-        "estado_pago": o.estado
+        "estado_pago": o.estado,
+        "mecanico_id": o.mecanico_id,
+        "inicio_trabajo": o.inicio_trabajo
     } for o, c, v in query]

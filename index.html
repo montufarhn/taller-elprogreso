@@ -1022,7 +1022,7 @@
             }
 
             container.innerHTML = datos.map(o => `
-                <div class="bg-orange-50 border-l-4 ${o.estado_pago === 'Pagada' ? 'border-green-500' : 'border-orange-500'} p-4 rounded shadow-sm">
+                <div class="bg-orange-50 border-l-4 ${o.mecanico_id ? 'border-blue-500 bg-blue-50' : (o.estado_pago === 'Pagada' ? 'border-green-500' : 'border-orange-500')} p-4 rounded shadow-sm">
                     <div class="flex justify-between items-start">
                         <h4 class="font-black text-lg text-orange-900 uppercase">${o.tipo_trabajo}</h4>
                         <span class="text-xs font-bold bg-orange-200 px-2 py-1 rounded">#${o.id}</span>
@@ -1030,13 +1030,34 @@
                     <p class="text-md mt-1"><strong>Vehículo:</strong> ${o.vehiculo_marca} ${o.vehiculo_modelo}</p>
                     <p class="text-lg font-bold text-blue-800 mt-2">Cliente: ${o.cliente_nombre}</p>
                     <div class="mt-4 flex justify-between items-center">
-                        <span class="text-xs font-bold ${o.estado_pago === 'Pagada' ? 'text-green-600' : 'text-red-500'}">
-                            ${o.estado_pago === 'Pagada' ? '✓ PAGADO' : '⌛ PENDIENTE DE PAGO'}
-                        </span>
-                        <button onclick="completarTrabajo(${o.id})" class="bg-orange-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-orange-700">Trabajo Completado</button>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold ${o.estado_pago === 'Pagada' ? 'text-green-600' : 'text-red-500'}">
+                                ${o.estado_pago === 'Pagada' ? '✓ PAGADO' : '⌛ PENDIENTE DE PAGO'}
+                            </span>
+                            ${o.inicio_trabajo ? `<span class="text-[10px] text-blue-600 font-bold uppercase">Iniciado: ${new Date(o.inicio_trabajo + 'Z').toLocaleTimeString()}</span>` : ''}
+                        </div>
+                        ${!o.mecanico_id 
+                            ? `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Tomar Trabajo</button>`
+                            : (o.mecanico_id === currentUser.user_id 
+                                ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-700">Trabajo Completado</button>`
+                                : `<span class="text-xs font-bold text-gray-400 italic">En proceso por otro...</span>`)
+                        }
                     </div>
                 </div>
             `).join('');
+        }
+
+        async function asignarTrabajo(id) {
+            const resp = await apiRequest(`${API_BASE_URL}/taller/asignar/${id}`, { 
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (resp && resp.ok) {
+                cargarTaller();
+            } else if (resp) {
+                const err = await resp.json();
+                alert(err.detail);
+            }
         }
 
         async function completarTrabajo(id) {

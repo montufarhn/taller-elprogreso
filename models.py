@@ -54,6 +54,9 @@ class OrdenTrabajo(Base):
     referencia_pago = Column(String, nullable=True)
     taller_completado = Column(Boolean, default=False)
     requiere_taller = Column(Boolean, default=False)
+    mecanico_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    inicio_trabajo = Column(DateTime, nullable=True)
+    fin_trabajo = Column(DateTime, nullable=True)
     fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class ItemCatalogo(Base):
