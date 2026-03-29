@@ -514,8 +514,13 @@
                     const cliJson = await respCli.json();
                     clienteId = cliJson.id;
                 } else {
-                    const err = await respCli.json();
-                    return alert("Error al procesar cliente: " + err.detail);
+                    try {
+                        const err = await respCli.json();
+                        return alert("Error al procesar cliente: " + err.detail);
+                    } catch (e) {
+                        console.error("Error servidor:", await respCli.text());
+                        return alert("Error al registrar cliente. Verifique que los datos sean correctos.");
+                    }
                 }
             }
 
@@ -613,8 +618,14 @@
                 document.getElementById('reg-dir').value = '';
                 cargarClientesFull();
             } else {
-                const err = await resp.json();
-                alert("Error al guardar: " + (err.detail || "Error desconocido"));
+                try {
+                    const err = await resp.json();
+                    alert("Error al guardar: " + (err.detail || "Error desconocido"));
+                } catch (e) {
+                    const text = await resp.text();
+                    console.error("Error del servidor:", text);
+                    alert("Error crítico del servidor. Verifique si el RTN ya existe o es muy largo.");
+                }
             }
         }
 

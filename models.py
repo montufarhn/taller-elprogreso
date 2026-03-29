@@ -17,7 +17,7 @@ class Cliente(Base):
     __tablename__ = "clientes"
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False)
-    rtn = Column(String(14), unique=True, nullable=True)
+    rtn = Column(String, unique=True, nullable=True)
     telefono = Column(String)
     direccion = Column(String, nullable=True)
     vehiculos = relationship("Vehiculo", back_populates="dueno")
