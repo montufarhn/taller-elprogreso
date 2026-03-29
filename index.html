@@ -185,6 +185,10 @@
                     <h3 class="font-bold text-xl mb-4 text-red-700 border-b pb-2">Egresos (Compras/Gastos)</h3>
                     <div id="lista-reporte-egresos" class="space-y-2 max-h-96 overflow-y-auto"></div>
                 </div>
+                <div class="bg-white p-6 rounded-xl shadow-md md:col-span-2">
+                    <h3 class="font-bold text-xl mb-4 text-blue-700 border-b pb-2">Rendimiento de Mecánicos (Eficiencia)</h3>
+                    <div id="lista-reporte-rendimiento" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                </div>
             </div>
             <div class="bg-blue-800 text-white p-6 rounded-xl shadow-lg flex justify-between items-center">
                 <h3 class="text-2xl font-bold">Balance Total</h3>
@@ -1072,13 +1076,15 @@
         }
 
         async function cargarReportes() {
-            const [respIng, respEgr] = await Promise.all([
+            const [respIng, respEgr, respRend] = await Promise.all([
                 apiRequest(`${API_BASE_URL}/caja/pagadas`, { headers: getHeaders() }),
-                apiRequest(`${API_BASE_URL}/reportes/egresos`, { headers: getHeaders() })
+                apiRequest(`${API_BASE_URL}/reportes/egresos`, { headers: getHeaders() }),
+                apiRequest(`${API_BASE_URL}/reportes/rendimiento`, { headers: getHeaders() })
             ]);
             
             const ingresos = await respIng.json();
             const egresos = await respEgr.json();
+            const rendimiento = await respRend.json();
             
             const totalIng = ingresos.reduce((sum, o) => sum + o.total, 0);
             const totalEgr = egresos.reduce((sum, e) => sum + e.monto, 0);
@@ -1104,6 +1110,15 @@
                         <p class="text-xs text-gray-500">${new Date(e.fecha + 'Z').toLocaleString()}</p>
                     </div>
                     <span class="text-red-600 font-bold">-Lps. ${e.monto.toFixed(2)}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('lista-reporte-rendimiento').innerHTML = rendimiento.map(r => `
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+                    <p class="text-sm text-blue-600 font-bold uppercase">${r.mecanico}</p>
+                    <p class="text-2xl font-black text-blue-900">${r.trabajos_completados}</p>
+                    <p class="text-xs text-gray-500">Trabajos completados</p>
+                    <p class="text-sm mt-2 font-bold text-gray-700">Promedio: <span class="text-blue-700">${r.tiempo_promedio_min} min</span></p>
                 </div>
             `).join('');
         }

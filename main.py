@@ -432,6 +432,37 @@ def listar_pagadas(db: Session = Depends(get_db), admin: models.Usuario = Depend
 def listar_egresos(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     return db.query(models.Egreso).order_by(models.Egreso.fecha.desc()).all()
 
+@app.get("/reportes/rendimiento")
+def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+    # Obtener trabajos completados que tienen registro de tiempo
+    trabajos = db.query(models.OrdenTrabajo, models.Usuario.username).join(
+        models.Usuario, models.OrdenTrabajo.mecanico_id == models.Usuario.id
+    ).filter(
+        models.OrdenTrabajo.taller_completado == True,
+        models.OrdenTrabajo.inicio_trabajo != None,
+        models.OrdenTrabajo.fin_trabajo != None
+    ).all()
+
+    stats = {}
+    for orden, name in trabajos:
+        if name not in stats:
+            stats[name] = {"total_trabajos": 0, "tiempo_total_segundos": 0}
+        
+        # Calcular duración en segundos
+        duracion = (orden.fin_trabajo - orden.inicio_trabajo).total_seconds()
+        stats[name]["total_trabajos"] += 1
+        stats[name]["tiempo_total_segundos"] += duracion
+
+    resultado = []
+    for name, data in stats.items():
+        promedio_minutos = (data["tiempo_total_segundos"] / data["total_trabajos"]) / 60
+        resultado.append({
+            "mecanico": name,
+            "trabajos_completados": data["total_trabajos"],
+            "tiempo_promedio_min": round(promedio_minutos, 2)
+        })
+    return resultado
+
 def format_ordenes_pago(query):
     return [{
         "id": o.id,
