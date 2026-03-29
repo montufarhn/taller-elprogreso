@@ -6,6 +6,10 @@ import os
 # Si no, usa SQLite localmente.
 SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./taller.db")
 
+# Fix para SQLAlchemy: Render y otros proveedores usan "postgres://" pero se requiere "postgresql://"
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # SQLite necesita check_same_thread, pero PostgreSQL no.
 connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
 
