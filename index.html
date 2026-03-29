@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Taller Pro Auto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body > * { display: none !important; }
+            #modal-factura { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; background: white !important; z-index: 9999 !important; }
+            #modal-factura .bg-white { box-shadow: none !important; width: 100% !important; max-width: none !important; border: none !important; }
+            #modal-factura h2, #modal-factura button, #modal-factura select, #modal-factura input { display: none !important; }
+            #modal-factura .flex.gap-2, #modal-factura #btn-anular-factura-modal { display: none !important; }
+            #metodo-pago-section { border: none !important; padding: 0 !important; }
+            #print-payment-info { display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <!-- Sección de Login -->
+    <div id="login-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
+        <h2 class="text-3xl font-bold mb-6 text-center text-blue-800">Taller Pro Auto</h2>
+        <div class="space-y-4">
+            <input id="user" type="text" placeholder="Usuario" class="w-full p-3 border rounded">
+            <input id="pass" type="password" placeholder="Contraseña" class="w-full p-3 border rounded">
+            <button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700">Entrar</button>
+        </div>
+    </div>
+
+    <!-- Panel Principal (Oculto al inicio) -->
+    <div id="dashboard" class="hidden max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">Bienvenido: <span id="display-user" class="text-blue-600"></span></h1>
+                <nav class="mt-2 space-x-4">
+                    <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Facturas / Cotizaciones</button>
+                    <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Clientes</button>
+                    <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Catálogo</button>
+                    <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Usuarios de Sistema</button>
+                    <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Datos del Negocio</button>
+                </nav>
+            </div>
+            <button onclick="logout()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200">Cerrar Sesión</button>
+        </div>
+
+        <!-- Nueva Sección: Facturas / Cotizaciones -->
+        <div id="tab-documentos" class="tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Panel Jefe de Pista -->
+            <div id="panel-jefe" class="hidden bg-white p-6 rounded-xl shadow-md">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-green-700">Nueva Orden / Cotización</h3>
+                <div class="space-y-2 mb-4">
+                    <div class="relative">
+                        <input id="nombre" type="text" placeholder="Nombre del Cliente" class="w-full p-2 border rounded" autocomplete="off" oninput="buscarClienteAutocomplete()">
+                        <div id="autocomplete-list" class="absolute z-10 w-full bg-white border rounded shadow-lg hidden max-h-48 overflow-y-auto"></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="rtn" type="text" placeholder="RTN (Opcional)" class="w-1/2 p-2 border rounded">
+                        <input id="tel" type="text" placeholder="Teléfono" class="w-1/2 p-2 border rounded">
+                    </div>
+                    <input id="dir" type="text" placeholder="Dirección (Opcional)" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="border-t pt-4">
+                    <h4 class="font-bold mb-2">Servicios / Productos</h4>
+                    <select id="select-catalogo" class="w-full p-2 border rounded mb-2" onchange="agregarItemOrden()">
+                        <option value="">-- Seleccionar del Catálogo --</option>
+                    </select>
+                    <div id="items-orden" class="space-y-2 mb-4">
+                        <!-- Items agregados aparecerán aquí -->
+                    </div>
+                    <div class="flex justify-between items-center font-bold text-lg p-2 bg-gray-50 rounded">
+                        <span>Total:</span>
+                        <span>Lps. <span id="total-orden">0.00</span></span>
+                    </div>
+                </div>
+                <button onclick="enviarOrden('Orden')" class="w-full mt-4 bg-blue-600 text-white p-2 rounded font-bold">Enviar a Caja</button>
+                <button onclick="enviarOrden('Cotizacion')" class="w-full mt-2 bg-gray-500 text-white p-2 rounded">Generar Cotización</button>
+            </div>
+
+            <!-- Panel Cajero -->
+            <div id="panel-cajero" class="hidden bg-white p-6 rounded-xl shadow-md">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-blue-700">Caja: Cobros Pendientes</h3>
+                <input id="search-cobro" type="text" placeholder="Buscar por Nombre o RTN..." 
+                    class="w-full mb-4 p-2 border rounded" oninput="filtrarCobros()">
+                <div id="lista-cobros" class="space-y-2">
+                    <!-- Se llena con JS -->
+                </div>
+            </div>
+
+            <!-- Panel Historial (Solo Admin) -->
+            <div id="panel-historial" class="hidden bg-white p-6 rounded-xl shadow-md col-span-1 lg:col-span-2">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-red-700">Admin: Historial de Facturas Pagadas</h3>
+                <input id="search-pagada" type="text" placeholder="Buscar por Nombre o RTN..." 
+                    class="w-full mb-4 p-2 border rounded" oninput="filtrarPagadas()">
+                <div id="lista-pagadas" class="space-y-2">
+                    <!-- Se llena con JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección: Usuarios de Sistema (Antes Taller) -->
+        <div id="tab-usuarios" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2 text-blue-800">Administración de Usuarios</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
+                <input id="new-user" type="text" placeholder="Usuario" class="p-2 border rounded">
+                <input id="new-pass" type="password" placeholder="Contraseña" class="p-2 border rounded">
+                <select id="new-rol" class="p-2 border rounded">
+                    <option value="jefe_pista">Jefe de Pista</option>
+                    <option value="cajero">Cajero</option>
+                    <option value="admin">Administrador</option>
+                </select>
+                <button onclick="crearUsuario()" class="bg-blue-600 text-white p-2 rounded">Crear Usuario</button>
+            </div>
+            <div id="lista-usuarios" class="space-y-2"></div>
+        </div>
+
+        <!-- Panel Datos del Negocio (Solo Admin) -->
+        <div id="tab-negocio" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2 text-blue-800">Datos Fiscales del Negocio (SAR)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nombre del Negocio</label>
+                    <input id="biz-nombre" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">RTN del Negocio</label>
+                    <input id="biz-rtn" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Teléfono</label>
+                    <input id="biz-tel" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Dirección Física</label>
+                    <input id="biz-dir" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">CAI</label>
+                    <input id="biz-cai" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Rango Autorizado (Desde)</label>
+                    <input id="biz-desde" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Rango Autorizado (Hasta)</label>
+                    <input id="biz-hasta" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fecha Límite de Emisión</label>
+                    <input id="biz-limite" type="date" class="w-full p-2 border rounded">
+                </div>
+            </div>
+            <button onclick="actualizarDatosNegocio()" class="mt-4 bg-blue-600 text-white p-2 px-4 rounded font-bold hover:bg-blue-700 transition">Guardar Datos Fiscales</button>
+        </div>
+
+        <!-- Panel Catálogo (Sección Aparte) -->
+        <div id="tab-catalogo" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-2xl mb-6 text-blue-800 border-b pb-2">Gestión de Catálogo</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
+                <input id="cat-nombre" type="text" placeholder="Nombre Item" class="p-2 border rounded">
+                <input id="cat-precio" type="number" placeholder="Precio" class="p-2 border rounded">
+                <select id="cat-tipo" class="p-2 border rounded">
+                    <option value="Producto">Producto</option>
+                    <option value="Mano de Obra">Mano de Obra</option>
+                </select>
+                <button onclick="crearItemCatalogo()" class="bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Agregar al Catálogo</button>
+            </div>
+            <div id="lista-catalogo" class="space-y-2"></div>
+        </div>
+
+        <!-- Panel Gestión de Clientes (Sección Aparte) -->
+        <div id="tab-clientes" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-2xl mb-6 text-blue-800 border-b pb-2">Gestión de Clientes</h3>
+            
+            <!-- Nuevo Formulario para crear clientes -->
+            <div id="form-registro-cliente" class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+                <h4 class="font-bold mb-3 text-gray-700">Registrar Nuevo Cliente</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                    <input id="reg-nombre" type="text" placeholder="Nombre completo" class="p-2 border rounded">
+                    <input id="reg-rtn" type="text" placeholder="RTN" class="p-2 border rounded">
+                    <input id="reg-tel" type="text" placeholder="Teléfono" class="p-2 border rounded">
+                    <input id="reg-dir" type="text" placeholder="Dirección" class="p-2 border rounded">
+                </div>
+                <button onclick="crearClienteDirecto()" class="mt-3 bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">Guardar Cliente</button>
+            </div>
+
+            <hr class="mb-6">
+            <input id="search-cliente" type="text" placeholder="Buscar por nombre o RTN..." class="w-full mb-4 p-2 border rounded" oninput="filtrarClientes()">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="p-3 border">Nombre</th>
+                            <th class="p-3 border">RTN</th>
+                            <th class="p-3 border">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-clientes-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Factura Detallada (Oculto) -->
+    <div id="modal-factura" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+            <h2 class="text-2xl font-bold mb-4 text-center border-b pb-2">Detalle de Cobro</h2>
+            <div id="factura-content" class="space-y-4 mb-6">
+                <!-- Contenido dinámico de la factura -->
+            </div>
+            <!-- Sección de Pago -->
+            <div id="metodo-pago-section" class="mt-4 p-3 bg-gray-50 rounded border mb-4">
+                <label class="block font-bold mb-1 text-sm text-gray-700">Método de Pago:</label>
+                <select id="select-metodo" class="w-full p-2 border rounded mb-2 text-sm" onchange="toggleReferencia()">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta">Tarjeta (POS)</option>
+                </select>
+                <div id="pos-referencia" class="hidden">
+                    <label class="block font-bold mb-1 text-sm text-gray-700">Ref. Transacción POS:</label>
+                    <input id="input-referencia" type="text" placeholder="Código POS" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div id="print-payment-info" class="hidden text-sm border-t pt-2 mt-2">
+                    <p><strong>Pago:</strong> <span id="print-metodo"></span> <span id="print-ref-span"></span></p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modal-factura').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg font-bold">Cancelar</button>
+                <button id="btn-confirmar-cobro" 
+                    class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 text-lg">Confirmar Pago</button>
+            </div>
+            <button id="btn-anular-factura-modal" 
+                class="w-full mt-2 text-red-600 text-sm font-bold underline">Anular esta factura</button>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let cacheClientes = [];
+        let cacheCatalogo = [];
+        let itemsSeleccionados = [];
+        let selectedClienteId = null;
+        let cacheCobros = [];
+        let cachePagadas = [];
+        let cacheNegocio = null;
+
+        // Al cargar la página, verificar si hay sesión guardada
+        window.onload = () => {
+            const savedUser = localStorage.getItem('taller_session');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+            }
+            
+            // Cargar borradores de formularios
+            document.getElementById('nombre').value = localStorage.getItem('draft_nombre') || '';
+            document.getElementById('rtn').value = localStorage.getItem('draft_rtn') || '';
+            
+            // Guardar borradores automáticamente
+            document.getElementById('nombre').addEventListener('input', (e) => localStorage.setItem('draft_nombre', e.target.value));
+            document.getElementById('rtn').addEventListener('input', (e) => localStorage.setItem('draft_rtn', e.target.value));
+
+            // Cerrar autocompletado al hacer clic fuera
+            document.addEventListener('click', (e) => {
+                const list = document.getElementById('autocomplete-list');
+                const input = document.getElementById('nombre');
+                if (list && input && !input.contains(e.target) && !list.contains(e.target)) {
+                    list.classList.add('hidden');
+                }
+            });
+        };
+
+        const API_BASE_URL = window.location.origin; // Detecta automáticamente la URL del servidor
+
+        async function login() {
+            const params = new URLSearchParams();
+            params.append('username', document.getElementById('user').value);
+            params.append('password', document.getElementById('pass').value);
+
+            const resp = await apiRequest(`${API_BASE_URL}/token`, { 
+                method: 'POST', 
+                body: params 
+            });
+            
+            if (!resp) return;
+
+            if (resp.ok) {
+                currentUser = await resp.json();
+                localStorage.setItem('taller_session', JSON.stringify(currentUser));
+                showDashboard();
+            } else {
+                alert("Usuario o contraseña incorrectos");
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            if(tabId === 'tab-clientes') cargarClientesFull();
+            if(tabId === 'tab-catalogo') cargarCatalogo();
+            if(tabId === 'tab-documentos') cargarDocumentosRelacionados();
+            if(tabId === 'tab-usuarios' && currentUser.rol === 'admin') cargarUsuarios();
+            if(tabId === 'tab-negocio' && currentUser.rol === 'admin') cargarDatosNegocio();
+        }
+
+        function showDashboard() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('display-user').innerText = `${currentUser.rol.toUpperCase()}`;
+            document.title = `Panel ${currentUser.rol.toUpperCase().replace('_', ' ')} - Taller Pro Auto`;
+
+            // Botones de navegación
+            document.getElementById('nav-documentos').classList.remove('hidden');
+
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') {
+                document.getElementById('nav-clientes').classList.remove('hidden');
+            }
+
+            if (currentUser.rol === 'admin') {
+                document.getElementById('nav-catalogo').classList.remove('hidden');
+                document.getElementById('nav-usuarios').classList.remove('hidden');
+                document.getElementById('nav-negocio').classList.remove('hidden');
+            }
+
+            // Paneles internos de Facturas / Cotizaciones
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') {
+                document.getElementById('panel-jefe').classList.remove('hidden');
+            }
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') {
+                document.getElementById('panel-cajero').classList.remove('hidden');
+            }
+            if (currentUser.rol === 'admin') {
+                document.getElementById('panel-historial').classList.remove('hidden');
+            }
+
+            // Abrir pestaña inicial según el rol
+            if (currentUser.rol === 'admin') switchTab('tab-usuarios');
+            else switchTab('tab-documentos');
+        }
+
+        function cargarDocumentosRelacionados() {
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') cargarCobros();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarCatalogo();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarClientesFull();
+            if (currentUser.rol === 'admin') cargarPagadas();
+        }
+
+        // Envoltorio centralizado para peticiones API
+        async function apiRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                
+                // Si el servidor responde 401 (No autorizado/Sesión expirada)
+                if (response.status === 401) {
+                    logout();
+                    return null;
+                }
+                return response;
+            } catch (error) {
+                // Si fetch falla es porque el servidor no está funcionando o no hay red
+                console.error("Error de comunicación con el servidor:", error);
+                alert("El servidor no responde. Serás redirigido al login por seguridad.");
+                logout();
+                return null;
+            }
+        }
+
+        // Helpers para headers con token
+        function getHeaders() {
+            return {
+                'Authorization': `Bearer ${currentUser.access_token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function buscarClienteAutocomplete() {
+            const query = document.getElementById('nombre').value.toLowerCase();
+            const list = document.getElementById('autocomplete-list');
+            selectedClienteId = null; // Resetear ID si el usuario escribe manualmente
+            
+            if (query.length < 2) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            // Buscar por nombre o por RTN
+            const filtrados = cacheClientes.filter(c => 
+                c.nombre.toLowerCase().includes(query) || 
+                (c.rtn && c.rtn.includes(query))
+            );
+            
+            if (filtrados.length > 0) {
+                list.innerHTML = filtrados.map(c => `
+                    <div onclick="seleccionarClienteAutoById(${c.id})" 
+                         class="p-2 hover:bg-gray-100 cursor-pointer border-b text-sm">
+                        <strong>${c.nombre}</strong> <span class="text-gray-500 text-xs">(${c.rtn || 'Sin RTN'})</span>
+                    </div>
+                `).join('');
+                list.classList.remove('hidden');
+            } else {
+                list.classList.add('hidden');
+            }
+        }
+
+        function seleccionarClienteAutoById(id) {
+            const cliente = cacheClientes.find(c => c.id == id);
+            if (!cliente) return;
+
+            selectedClienteId = cliente.id;
+            document.getElementById('nombre').value = cliente.nombre;
+            document.getElementById('rtn').value = cliente.rtn || '';
+            document.getElementById('tel').value = cliente.telefono || '';
+            document.getElementById('dir').value = cliente.direccion || '';
+
+            // Actualizar borradores al seleccionar
+            localStorage.setItem('draft_nombre', cliente.nombre);
+            localStorage.setItem('draft_rtn', cliente.rtn || '');
+
+            document.getElementById('autocomplete-list').classList.add('hidden');
+        }
+
+        async function cargarCatalogo() {
+            const resp = await apiRequest(`${API_BASE_URL}/catalogo/`, { headers: getHeaders() });
+            if (!resp) return;
+
+            cacheCatalogo = await resp.json();
+            const select = document.getElementById('select-catalogo');
+            select.innerHTML = '<option value="">-- Seleccionar del Catálogo --</option>' + 
+                cacheCatalogo.map(i => `<option value="${i.id}">${i.nombre} - Lps. ${i.precio}</option>`).join('');
+            
+            if(currentUser.rol === 'admin') renderCatalogoAdmin();
+        }
+
+        function agregarItemOrden() {
+            const id = document.getElementById('select-catalogo').value;
+            if(!id) return;
+            const item = cacheCatalogo.find(i => i.id == id);
+            
+            // Verificar si el item ya existe en la orden para incrementar cantidad
+            const existingIndex = itemsSeleccionados.findIndex(i => i.id == id);
+            if (existingIndex > -1) {
+                itemsSeleccionados[existingIndex].cantidad += 1;
+            } else {
+                itemsSeleccionados.push({...item, cantidad: 1});
+            }
+            renderItemsOrden();
+        }
+
+        function actualizarCantidad(index, valor) {
+            const cant = parseInt(valor);
+            if (cant > 0) {
+                itemsSeleccionados[index].cantidad = cant;
+                renderItemsOrden();
+            }
+        }
+
+        function renderItemsOrden() {
+            const container = document.getElementById('items-orden');
+            let total = 0;
+            container.innerHTML = itemsSeleccionados.map((item, index) => {
+                const subtotal = item.precio * item.cantidad;
+                total += subtotal;
+                return `<div class="flex justify-between items-center bg-gray-100 p-2 rounded text-sm">
+                    <div class="flex flex-col">
+                        <span class="font-bold">${item.nombre}</span>
+                        <span class="text-xs text-gray-500">Lps. ${item.precio.toFixed(2)} c/u</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="1" value="${item.cantidad}" 
+                            class="w-12 p-1 border rounded text-center" 
+                            onchange="actualizarCantidad(${index}, this.value)">
+                        <span class="w-20 text-right font-medium">Lps. ${subtotal.toFixed(2)}</span>
+                        <button onclick="removerItem(${index})" class="text-red-500 ml-2 font-bold">×</button>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('total-orden').innerText = total.toFixed(2);
+        }
+
+        function removerItem(index) {
+            itemsSeleccionados.splice(index, 1);
+            renderItemsOrden();
+        }
+
+        async function enviarOrden(tipo) {
+            const clienteData = {
+                nombre: document.getElementById('nombre').value,
+                rtn: document.getElementById('rtn').value,
+                telefono: document.getElementById('tel').value,
+                direccion: document.getElementById('dir').value
+            };
+            if(!clienteData.nombre || itemsSeleccionados.length === 0) return alert("Faltan datos");
+
+            // 1. Obtener ID del cliente (existente o nuevo)
+            let clienteId = selectedClienteId;
+            
+            if (!clienteId) {
+                const respCli = await apiRequest(`${API_BASE_URL}/clientes/`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(clienteData)
+                });
+                if (!respCli) return;
+                
+                if (respCli.ok) {
+                    const cliJson = await respCli.json();
+                    clienteId = cliJson.id;
+                } else {
+                    const err = await respCli.json();
+                    return alert("Error al procesar cliente: " + err.detail);
+                }
+            }
+
+            if(!clienteId) {
+                // Si el RTN ya existe, el backend dio error, pero para este flujo 
+                // necesitaríamos un buscador de clientes real. Por ahora alertamos.
+                return alert("El cliente ya existe o el RTN está duplicado.");
+            }
+
+            // 2. Crear Orden
+            const desc = itemsSeleccionados.map(i => `${i.cantidad}|${i.nombre}|${i.precio}`).join(";");
+            const total = parseFloat(document.getElementById('total-orden').innerText);
+            
+            const params = new URLSearchParams({
+                cliente_id: clienteId,
+                descripcion: desc,
+                total: total,
+                tipo: tipo
+            });
+
+            const respOrd = await apiRequest(`${API_BASE_URL}/ordenes/?${params.toString()}`, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+
+            if (!respOrd) return;
+
+            if(respOrd.ok) {
+                alert(`${tipo} guardada`);
+                location.reload();
+            }
+        }
+
+        async function crearItemCatalogo() {
+            const data = {
+                nombre: document.getElementById('cat-nombre').value,
+                precio: parseFloat(document.getElementById('cat-precio').value),
+                tipo: document.getElementById('cat-tipo').value
+            };
+            const resp = await apiRequest(`${API_BASE_URL}/catalogo/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                alert("Item agregado");
+                cargarCatalogo();
+            }
+        }
+
+        function renderCatalogoAdmin() {
+            const container = document.getElementById('lista-catalogo');
+            container.innerHTML = cacheCatalogo.map(i => `
+                <div class="flex justify-between bg-gray-50 p-2 border rounded">
+                    <span><strong>${i.nombre}</strong> (${i.tipo}) - Lps. ${i.precio}</span>
+                    <button onclick="eliminarCatalogo(${i.id})" class="text-red-500">Eliminar</button>
+                </div>
+            `).join('');
+        }
+
+        async function eliminarCatalogo(id) {
+            await apiRequest(`${API_BASE_URL}/catalogo/${id}`, { method: 'DELETE', headers: getHeaders() });
+            cargarCatalogo();
+        }
+
+        async function crearClienteDirecto() {
+            const data = {
+                nombre: document.getElementById('reg-nombre').value,
+                rtn: document.getElementById('reg-rtn').value,
+                telefono: document.getElementById('reg-tel').value,
+                direccion: document.getElementById('reg-dir').value
+            };
+
+            if(!data.nombre) {
+                alert("El nombre del cliente es obligatorio");
+                return;
+            }
+
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                alert("Cliente registrado exitosamente");
+                document.getElementById('reg-nombre').value = '';
+                document.getElementById('reg-rtn').value = '';
+                document.getElementById('reg-tel').value = '';
+                document.getElementById('reg-dir').value = '';
+                cargarClientesFull();
+            } else {
+                const err = await resp.json();
+                alert("Error al guardar: " + (err.detail || "Error desconocido"));
+            }
+        }
+
+        async function registrar() {
+            // (Esta función queda obsoleta por enviarOrden, pero se puede mantener para registros rápidos)
+            const data = {
+                nombre: document.getElementById('nombre').value,
+                rtn: document.getElementById('rtn').value,
+                telefono: document.getElementById('tel').value,
+                direccion: document.getElementById('dir').value
+            };
+            const response = await apiRequest(`${API_BASE_URL}/clientes/`, { 
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+            if (!response) return;
+
+            if(response.ok) {
+                alert("Cliente guardado");
+                localStorage.removeItem('draft_nombre');
+                localStorage.removeItem('draft_rtn');
+            } else {
+                const errorData = await response.json();
+                alert("Error: " + (errorData.detail || "No se pudo registrar el cliente"));
+            }
+        }
+
+        async function cargarClientesFull() {
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/`, { headers: getHeaders() });
+            if (!resp) return;
+
+            cacheClientes = await resp.json();
+            renderClientesTable(cacheClientes);
+        }
+
+        async function cargarDatosNegocio() {
+            const resp = await apiRequest(`${API_BASE_URL}/negocio/`, { headers: getHeaders() });
+            if (!resp) return;
+            cacheNegocio = await resp.json();
+            
+            // Llenar formulario si existe
+            const bizNombre = document.getElementById('biz-nombre');
+            if (bizNombre) {
+                bizNombre.value = cacheNegocio.nombre;
+                document.getElementById('biz-rtn').value = cacheNegocio.rtn;
+                document.getElementById('biz-tel').value = cacheNegocio.telefono;
+                document.getElementById('biz-dir').value = cacheNegocio.direccion;
+                document.getElementById('biz-cai').value = cacheNegocio.cai;
+                document.getElementById('biz-desde').value = cacheNegocio.rango_desde;
+                document.getElementById('biz-hasta').value = cacheNegocio.rango_hasta;
+                document.getElementById('biz-limite').value = cacheNegocio.fecha_limite.split('T')[0];
+            }
+        }
+
+        async function actualizarDatosNegocio() {
+            const data = {
+                nombre: document.getElementById('biz-nombre').value,
+                rtn: document.getElementById('biz-rtn').value,
+                telefono: document.getElementById('biz-tel').value,
+                direccion: document.getElementById('biz-dir').value,
+                cai: document.getElementById('biz-cai').value,
+                rango_desde: document.getElementById('biz-desde').value,
+                rango_hasta: document.getElementById('biz-hasta').value,
+                fecha_limite: document.getElementById('biz-limite').value
+            };
+
+            const resp = await apiRequest(`${API_BASE_URL}/negocio/`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (resp && resp.ok) {
+                alert("Datos del negocio actualizados correctamente");
+                cacheNegocio = await resp.json();
+            }
+        }
+
+        function renderClientesTable(clientes) {
+            const body = document.getElementById('tabla-clientes-body');
+            body.innerHTML = clientes.map(c => `
+                <tr class="hover:bg-gray-50">
+                    <td class="p-3 border">${c.nombre}</td>
+                    <td class="p-3 border">${c.rtn || '---'}</td>
+                    <td class="p-3 border space-x-2">
+                        ${currentUser.rol === 'admin' ? `
+                            <button onclick="editarCliente(${c.id}, '${c.nombre}', '${c.rtn || ''}', '${c.telefono}', '${c.direccion || ''}')" class="text-blue-600 hover:underline">Editar</button>
+                            <button onclick="eliminarCliente(${c.id})" class="text-red-600 hover:underline">Borrar</button>
+                        ` : '<span class="text-gray-400 text-sm">Solo lectura</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrarClientes() {
+            const query = document.getElementById('search-cliente').value.toLowerCase();
+            const filtrados = cacheClientes.filter(c => 
+                c.nombre.toLowerCase().includes(query) || 
+                (c.rtn && c.rtn.includes(query))
+            );
+            renderClientesTable(filtrados);
+        }
+
+        async function editarCliente(id, nombre, rtn, tel, dir) {
+            const nuevoNombre = prompt("Nuevo nombre:", nombre);
+            const nuevoRtn = prompt("Nuevo RTN:", rtn);
+            const nuevoTel = prompt("Nuevo Teléfono:", tel);
+            const nuevaDir = prompt("Nueva Dirección:", dir);
+
+            if (!nuevoNombre) return; 
+
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify({ 
+                    nombre: nuevoNombre, 
+                    rtn: nuevoRtn, 
+                    telefono: nuevoTel || tel, 
+                    direccion: nuevaDir || dir 
+                })
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                alert("Cliente actualizado");
+                cargarClientesFull();
+            } else {
+                const err = await resp.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        async function eliminarCliente(id) {
+            if(!confirm("¿Está seguro de eliminar este cliente? Esto podría afectar historiales.")) return;
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+            if (!resp) return;
+
+            if(resp.ok) {
+                alert("Cliente eliminado");
+                cargarClientesFull();
+            }
+        }
+
+        async function cargarUsuarios() {
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/`, { headers: getHeaders() });
+            if (!resp) return;
+
+            const usuarios = await resp.json();
+            const lista = document.getElementById('lista-usuarios');
+            lista.innerHTML = usuarios.map(u => `
+                <div class="flex justify-between items-center bg-gray-50 p-2 border rounded">
+                    <span><strong>${u.username}</strong> (${u.rol})</span>
+                    <div class="space-x-2">
+                        <button onclick="editarUsuario(${u.id}, '${u.username}', '${u.rol}')" class="text-blue-600 text-sm">Editar</button>
+                        ${u.username !== 'admin' ? `<button onclick="eliminarUsuario(${u.id})" class="text-red-500 text-sm">Eliminar</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function crearUsuario() {
+            const user = document.getElementById('new-user').value;
+            const pass = document.getElementById('new-pass').value;
+            const rol = document.getElementById('new-rol').value;
+            
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({ username: user, password: pass, rol: rol })
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                alert("Usuario creado");
+                cargarUsuarios();
+                document.getElementById('new-user').value = '';
+                document.getElementById('new-pass').value = '';
+            } else {
+                const err = await resp.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        async function editarUsuario(id, username, rol) {
+            const nuevoUsername = prompt("Nuevo nombre de usuario:", username);
+            if (!nuevoUsername) return;
+            const nuevoRol = prompt("Nuevo rol (admin, jefe_pista, cajero):", rol);
+            if (!nuevoRol) return;
+            const nuevaPass = prompt("Nueva contraseña (dejar en blanco para mantener la actual):");
+
+            const updateData = {
+                username: nuevoUsername,
+                rol: nuevoRol
+            };
+            if (nuevaPass) updateData.password = nuevaPass;
+
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(updateData)
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                alert("Usuario actualizado correctamente");
+                cargarUsuarios();
+            } else {
+                const err = await resp.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        async function eliminarUsuario(id) {
+            if(!confirm("¿Seguro que desea eliminar este usuario?")) return;
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, { 
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+            if (!resp) return;
+
+            if(resp.ok) cargarUsuarios();
+        }
+
+        async function cargarCobros() {
+            const resp = await apiRequest(`${API_BASE_URL}/caja/pendientes`, { headers: getHeaders() });
+            if (!resp) return;
+
+            cacheCobros = await resp.json();
+            renderCobros(cacheCobros);
+        }
+
+        function renderCobros(datos) {
+            const lista = document.getElementById('lista-cobros');
+            lista.innerHTML = datos.map(o => `
+                <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-blue-300 transition-colors">
+                    <div>
+                        <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
+                        <p class="text-xs text-gray-500">RTN: ${o.cliente_rtn} | #${o.id}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-blue-700">Lps. ${o.total.toFixed(2)}</p>
+                        <div class="flex flex-col items-end">
+                            <button onclick="mostrarFactura(${o.id})" class="bg-blue-600 text-white px-4 py-1 rounded text-sm mt-1">Ver Factura</button>
+                            <button onclick="anularFactura(${o.id})" class="text-red-500 text-xs underline mt-2">Anular Orden</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrarCobros() {
+            const q = document.getElementById('search-cobro').value.toLowerCase();
+            const filtrados = cacheCobros.filter(o => 
+                o.cliente_nombre.toLowerCase().includes(q) || 
+                o.cliente_rtn.includes(q)
+            );
+            renderCobros(filtrados);
+        }
+
+        async function cargarPagadas() {
+            const resp = await apiRequest(`${API_BASE_URL}/caja/pagadas`, { headers: getHeaders() });
+            if (!resp) return;
+            cachePagadas = await resp.json();
+            renderPagadas(cachePagadas);
+        }
+
+        function renderPagadas(datos) {
+            const lista = document.getElementById('lista-pagadas');
+            lista.innerHTML = datos.map(o => `
+                <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-red-300 transition-colors">
+                    <div>
+                        <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
+                        <p class="text-xs text-gray-500">RTN: ${o.cliente_rtn} | #${o.id} | ${new Date(o.fecha).toLocaleDateString()}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-red-700">Lps. ${o.total.toFixed(2)}</p>
+                        <div class="space-x-2 mt-1">
+                            <button onclick="mostrarFacturaFromCache(${o.id}, 'pagada')" class="text-blue-600 text-sm underline">Ver Detalle</button>
+                            <button onclick="anularFactura(${o.id})" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Anular</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrarPagadas() {
+            const q = document.getElementById('search-pagada').value.toLowerCase();
+            const filtrados = cachePagadas.filter(o => 
+                o.cliente_nombre.toLowerCase().includes(q) || 
+                o.cliente_rtn.includes(q)
+            );
+            renderPagadas(filtrados);
+        }
+
+        async function anularFactura(id) {
+            if(!confirm("¿Está seguro de ANULAR esta factura? El registro quedará guardado como anulado y no se podrá cobrar.")) return;
+            const resp = await apiRequest(`${API_BASE_URL}/caja/anular/${id}`, { 
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (resp) {
+                alert("Factura anulada con éxito.");
+                document.getElementById('modal-factura').classList.add('hidden');
+                cargarPagadas();
+                cargarCobros();
+            }
+        }
+
+        // Helper para mostrar factura desde cualquier cache
+        function mostrarFacturaFromCache(id, tipoCache) {
+            const source = tipoCache === 'pagada' ? cachePagadas : cacheCobros;
+            mostrarFactura(id, source);
+        }
+
+        function toggleReferencia() {
+            const metodo = document.getElementById('select-metodo').value;
+            const divRef = document.getElementById('pos-referencia');
+            if (metodo === 'Tarjeta') divRef.classList.remove('hidden');
+            else divRef.classList.add('hidden');
+        }
+
+        function mostrarFactura(id) {
+            const orden = arguments[1] ? arguments[1].find(o => o.id === id) : cacheCobros.find(o => o.id === id);
+            if (!orden) return;
+
+            // Reset campos de pago
+            document.getElementById('select-metodo').value = 'Efectivo';
+            document.getElementById('input-referencia').value = '';
+            document.getElementById('pos-referencia').classList.add('hidden');
+            document.getElementById('print-payment-info').classList.add('hidden');
+
+            const items = orden.descripcion.split(';').filter(r => r.trim() !== "").map(row => {
+                const parts = row.split('|');
+                if (parts.length === 3) {
+                    // Parseamos explícitamente a números para asegurar el cálculo
+                    return { 
+                        cant: parseInt(parts[0]) || 1, 
+                        nombre: parts[1], 
+                        precio: parseFloat(parts[2]) || 0 
+                    };
+                }
+                // Compatibilidad: Si el registro es viejo y ya tiene el "5x " en el texto
+                const match = row.match(/^(\d+)x\s+(.+)$/);
+                if (match) {
+                    return { cant: parseInt(match[1]), nombre: match[2], precio: 0 };
+                }
+                return { cant: 1, nombre: row, precio: 0 }; // Texto simple sin formato
+            });
+
+            const content = document.getElementById('factura-content');
+            content.innerHTML = `
+                <div class="text-center mb-4 uppercase">
+                    <h3 class="text-xl font-bold">${cacheNegocio?.nombre || 'Taller Pro Auto'}</h3>
+                    <p class="text-xs">${cacheNegocio?.direccion || ''}</p>
+                    <p class="text-xs">RTN: ${cacheNegocio?.rtn || ''} | TEL: ${cacheNegocio?.telefono || ''}</p>
+                </div>
+
+                <div class="text-[10px] bg-gray-50 p-2 mb-4 border rounded">
+                    <p><strong>CAI:</strong> ${cacheNegocio?.cai || ''}</p>
+                    <p><strong>Rango Autorizado:</strong> ${cacheNegocio?.rango_desde || ''} AL ${cacheNegocio?.rango_hasta || ''}</p>
+                    <p><strong>Fecha Límite Emisión:</strong> ${cacheNegocio ? new Date(cacheNegocio.fecha_limite).toLocaleDateString() : ''}</p>
+                </div>
+
+                <div class="flex justify-between items-center mb-4 border-b pb-1 font-bold">
+                    <span>FACTURA No.</span>
+                    <span>${orden.id.toString().padStart(8, '0')}</span>
+                </div>
+
+                <div class="text-sm border-b pb-2">
+                    <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
+                    <p><strong>RTN:</strong> ${orden.cliente_rtn}</p>
+                    <p><strong>Fecha:</strong> ${new Date(orden.fecha).toLocaleString()}</p>
+                </div>
+                <div class="text-sm space-y-1">
+                    ${items.map(i => `
+                        <div class="flex justify-between">
+                            <span>${i.cant}x ${i.nombre} (Lps. ${i.precio.toFixed(2)})</span>
+                            <span>Lps. ${(i.cant * i.precio).toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="flex justify-between font-bold text-xl border-t pt-2 text-blue-800">
+                    <span>TOTAL:</span>
+                    <span>Lps. ${orden.total.toFixed(2)}</span>
+                </div>
+            `;
+
+            document.getElementById('btn-confirmar-cobro').onclick = () => cobrar(orden.id);
+            document.getElementById('btn-anular-factura-modal').onclick = () => anularFactura(orden.id);
+            document.getElementById('modal-factura').classList.remove('hidden');
+        }
+
+        async function cobrar(id) {
+            const metodo = document.getElementById('select-metodo').value;
+            const referencia = document.getElementById('input-referencia').value;
+
+            if (metodo === 'Tarjeta' && !referencia) {
+                alert("Debe ingresar la referencia de la transacción del POS");
+                return;
+            }
+
+            const params = new URLSearchParams({
+                metodo_pago: metodo,
+                referencia_pago: referencia || ""
+            });
+
+            const resp = await apiRequest(`${API_BASE_URL}/caja/cobrar/${id}?${params.toString()}`, { 
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (!resp) return;
+
+            // Preparar para impresión
+            document.getElementById('print-metodo').innerText = metodo;
+            document.getElementById('print-ref-span').innerText = referencia ? `(Ref: ${referencia})` : "";
+            
+            // Disparar impresión
+            window.print();
+
+            document.getElementById('modal-factura').classList.add('hidden');
+            alert("¡Cobro realizado con éxito!");
+            cargarCobros();
+        }
+
+        function logout() { 
+            localStorage.removeItem('taller_session');
+            location.reload(); 
+        }
+    </script>
+</body>
+</html>
