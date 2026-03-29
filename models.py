@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, DeclarativeBase
-from datetime import datetime
+from datetime import datetime, timezone
 
 class Base(DeclarativeBase):
     pass
@@ -39,7 +39,7 @@ class Cotizacion(Base):
     vehiculo_id = Column(Integer, ForeignKey("vehiculos.id"))
     estado = Column(String, default="Pendiente") # Pendiente, Aceptada
     total = Column(Float, default=0.0)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class OrdenTrabajo(Base):
     __tablename__ = "ordenes_trabajo"
@@ -54,7 +54,7 @@ class OrdenTrabajo(Base):
     referencia_pago = Column(String, nullable=True)
     taller_completado = Column(Boolean, default=False)
     requiere_taller = Column(Boolean, default=False)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class ItemCatalogo(Base):
     __tablename__ = "catalogo"
@@ -62,6 +62,14 @@ class ItemCatalogo(Base):
     nombre = Column(String, nullable=False)
     precio = Column(Float, nullable=False)
     tipo = Column(String) # 'Producto' o 'Mano de Obra'
+    existencia = Column(Integer, default=0)
+
+class Egreso(Base):
+    __tablename__ = "egresos"
+    id = Column(Integer, primary_key=True, index=True)
+    descripcion = Column(String)
+    monto = Column(Float, default=0.0)
+    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class NegocioConfig(Base):
     __tablename__ = "negocio_config"

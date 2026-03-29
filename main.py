@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, get_db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -53,9 +53,20 @@ class CatalogoBase(BaseModel):
     nombre: str
     precio: float
     tipo: str # 'Producto' o 'Mano de Obra'
+    existencia: int = 0
 
 class CatalogoResponse(CatalogoBase):
     id: int
+    class Config:
+        from_attributes = True
+
+class EgresoBase(BaseModel):
+    descripcion: str
+    monto: float
+
+class EgresoResponse(EgresoBase):
+    id: int
+    fecha: datetime
     class Config:
         from_attributes = True
 
@@ -99,7 +110,7 @@ async def lifespan(app: FastAPI):
                 cai="XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XX",
                 rango_desde="000-001-01-00000001",
                 rango_hasta="000-001-01-00000999",
-                fecha_limite=datetime.utcnow() + timedelta(days=365)
+                fecha_limite=datetime.now(timezone.utc) + timedelta(days=365)
             )
             db.add(config_inicial)
             db.commit()
@@ -216,17 +227,32 @@ def eliminar_usuario(user_id: int, db: Session = Depends(get_db), admin: models.
 
 # --- Gestión de Catálogo (Admin) ---
 
-@app.get("/catalogo/", response_model=List[CatalogoResponse])
-def listar_catalogo(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+@app.get("/inventario/", response_model=List[CatalogoResponse])
+def listar_inventario(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     return db.query(models.ItemCatalogo).all()
 
-@app.post("/catalogo/", response_model=CatalogoResponse)
-def crear_item_catalogo(item: CatalogoBase, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+@app.post("/inventario/", response_model=CatalogoResponse)
+def crear_item_inventario(item: CatalogoBase, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     nuevo_item = models.ItemCatalogo(**item.model_dump())
     db.add(nuevo_item)
     db.commit()
     db.refresh(nuevo_item)
     return nuevo_item
+
+@app.post("/inventario/comprar")
+def comprar_inventario(item_id: int, cantidad: int, costo_total: float, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+    item = db.query(models.ItemCatalogo).filter(models.ItemCatalogo.id == item_id).first()
+    if not item: raise HTTPException(status_code=404)
+    
+    # Aumentar stock
+    item.existencia += cantidad
+    
+    # Registrar Egreso
+    nuevo_egreso = models.Egreso(descripcion=f"Compra de Inventario: {cantidad}x {item.nombre}", monto=costo_total)
+    db.add(nuevo_egreso)
+    
+    db.commit()
+    return {"message": "Inventario actualizado y egreso registrado"}
 
 @app.delete("/catalogo/{item_id}")
 def eliminar_item_catalogo(item_id: int, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
@@ -377,6 +403,19 @@ def cobrar_orden(orden_id: int, metodo_pago: str, referencia_pago: Optional[str]
     orden.estado = "Pagada"
     orden.metodo_pago = metodo_pago
     orden.referencia_pago = referencia_pago
+
+    # Descontar del inventario
+    items_raw = orden.descripcion.split(';')
+    for raw in items_raw:
+        if not raw: continue
+        parts = raw.split('|')
+        if len(parts) == 3:
+            cant = int(parts[0])
+            nombre = parts[1]
+            item_db = db.query(models.ItemCatalogo).filter(models.ItemCatalogo.nombre == nombre).first()
+            if item_db and item_db.tipo == "Producto":
+                item_db.existencia -= cant
+                
     db.commit()
     return {"message": "Cobro realizado con éxito"}
 
@@ -387,6 +426,13 @@ def listar_pagadas(db: Session = Depends(get_db), admin: models.Usuario = Depend
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(models.OrdenTrabajo.estado == "Pagada").all()
     
+    return format_ordenes_pago(query)
+
+@app.get("/reportes/egresos", response_model=List[EgresoResponse])
+def listar_egresos(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+    return db.query(models.Egreso).order_by(models.Egreso.fecha.desc()).all()
+
+def format_ordenes_pago(query):
     return [{
         "id": o.id,
         "descripcion": o.descripcion,
