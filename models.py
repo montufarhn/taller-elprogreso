@@ -28,6 +28,8 @@ class Vehiculo(Base):
     placa = Column(String, unique=True, index=True)
     marca = Column(String)
     modelo = Column(String)
+    anio = Column(Integer, nullable=True)
+    color = Column(String, nullable=True)
     cliente_id = Column(Integer, ForeignKey("clientes.id"))
     dueno = relationship("Cliente", back_populates="vehiculos")
 

@@ -86,6 +86,7 @@ async def lifespan(app: FastAPI):
             # Crear también un jefe de pista y cajero para pruebas
             db.add(models.Usuario(username="jefe", password_hash=pwd_context.hash("jefe123"), rol="jefe_pista"))
             db.add(models.Usuario(username="caja", password_hash=pwd_context.hash("caja123"), rol="cajero"))
+            db.add(models.Usuario(username="taller", password_hash=pwd_context.hash("taller123"), rol="mecanico"))
             db.commit()
 
         # Crear configuración de negocio inicial si no existe
@@ -150,6 +151,11 @@ def check_jefe_or_admin(current_user: models.Usuario = Depends(get_current_user)
 def check_cajero_or_admin(current_user: models.Usuario = Depends(get_current_user)):
     if current_user.rol not in ["admin", "cajero"]:
         raise HTTPException(status_code=403, detail="Permiso denegado: Solo el Administrador o el Cajero pueden anular facturas")
+    return current_user
+
+def check_mecanico_or_admin(current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ["admin", "mecanico"]:
+        raise HTTPException(status_code=403, detail="Permiso denegado: Solo el Administrador o el Mecánico pueden ver esta pantalla")
     return current_user
 
 @app.get("/")
@@ -307,8 +313,36 @@ def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db), admin: mode
 
 # Jefe de Pista: Crear Orden de Trabajo
 @app.post("/ordenes/")
-def crear_orden(cliente_id: int, descripcion: str, total: float, tipo: str = "Orden", db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
-    nueva_orden = models.OrdenTrabajo(cliente_id=cliente_id, descripcion=descripcion, total=total, tipo=tipo)
+def crear_orden(
+    cliente_id: int, 
+    descripcion: str, 
+    total: float, 
+    tipo: str = "Orden", 
+    placa: Optional[str] = None,
+    marca: Optional[str] = None,
+    modelo: Optional[str] = None,
+    anio: Optional[int] = None,
+    color: Optional[str] = None,
+    db: Session = Depends(get_db), 
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    # Buscar o crear vehículo
+    vehiculo = None
+    if placa:
+        vehiculo = db.query(models.Vehiculo).filter(models.Vehiculo.placa == placa).first()
+    
+    if not vehiculo and marca:
+        vehiculo = models.Vehiculo(placa=placa, marca=marca, modelo=modelo, anio=anio, color=color, cliente_id=cliente_id)
+        db.add(vehiculo)
+        db.flush() # Para obtener el ID
+
+    nueva_orden = models.OrdenTrabajo(
+        cliente_id=cliente_id, 
+        vehiculo_id=vehiculo.id if vehiculo else None,
+        descripcion=descripcion, 
+        total=total, 
+        tipo=tipo
+    )
     db.add(nueva_orden)
     db.commit()
     return {"message": f"{tipo} creada exitosamente"}
@@ -371,3 +405,21 @@ def anular_factura(orden_id: int, db: Session = Depends(get_db), user: models.Us
     orden.estado = "Anulada"
     db.commit()
     return {"message": "Factura anulada exitosamente"}
+
+# Pantalla Taller: Listar Trabajos Pendientes
+@app.get("/taller/pendientes")
+def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_mecanico_or_admin)):
+    query = db.query(models.OrdenTrabajo, models.Cliente, models.Vehiculo).join(
+        models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
+    ).outerjoin(
+        models.Vehiculo, models.OrdenTrabajo.vehiculo_id == models.Vehiculo.id
+    ).filter(models.OrdenTrabajo.estado == "Pendiente", models.OrdenTrabajo.tipo == "Orden").all()
+    
+    return [{
+        "id": o.id,
+        "tipo_trabajo": o.descripcion.split(';')[0].split('|')[1] if '|' in o.descripcion else o.descripcion,
+        "cliente_nombre": c.nombre,
+        "vehiculo_marca": v.marca if v else "N/A",
+        "vehiculo_modelo": v.modelo if v else "N/A",
+        "fecha": o.fecha
+    } for o, c, v in query]
