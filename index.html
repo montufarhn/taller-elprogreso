@@ -271,7 +271,11 @@
             });
         };
 
-        const API_BASE_URL = window.location.origin; // Detecta automáticamente la URL del servidor
+        // Detecta automáticamente la URL del servidor. 
+        // Si se abre como archivo local, cae de vuelta a la IP por defecto del servidor.
+        const API_BASE_URL = (window.location.origin === "null" || window.location.protocol === "file:") 
+            ? "http://127.0.0.1:8000" 
+            : window.location.origin;
 
         async function login() {
             const params = new URLSearchParams();
@@ -337,6 +341,9 @@
             // Abrir pestaña inicial según el rol
             if (currentUser.rol === 'admin') switchTab('tab-usuarios');
             else switchTab('tab-documentos');
+
+            // Cargar datos del negocio inmediatamente para tenerlos listos para facturación
+            cargarDatosNegocio();
         }
 
         function cargarDocumentosRelacionados() {

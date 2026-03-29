@@ -157,7 +157,6 @@ async def home():
     return FileResponse("index.html")
 
 # --- Gestión de Usuarios (Solo Admin) ---
-
 @app.get("/usuarios/", response_model=List[UserResponse])
 def listar_usuarios(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     return db.query(models.Usuario).all()
