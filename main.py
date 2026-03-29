@@ -408,7 +408,7 @@ def anular_factura(orden_id: int, db: Session = Depends(get_db), user: models.Us
 
 # Pantalla Taller: Listar Trabajos Pendientes
 @app.get("/taller/pendientes")
-def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_mecanico_or_admin)):
+def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
     query = db.query(models.OrdenTrabajo, models.Cliente, models.Vehiculo).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).outerjoin(
