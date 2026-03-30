@@ -79,6 +79,7 @@ class NegocioBase(BaseModel):
     rango_desde: str
     rango_hasta: str
     fecha_limite: datetime
+    logo: Optional[str] = None
 
 class NegocioResponse(NegocioBase):
     id: int

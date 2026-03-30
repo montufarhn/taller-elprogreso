@@ -30,7 +30,9 @@
     <!-- Panel Principal (Oculto al inicio) -->
     <div id="dashboard" class="hidden max-w-4xl mx-auto">
         <div class="flex justify-between items-center mb-8">
-            <div>
+            <div class="flex items-center gap-4">
+                <img id="logo-nav" src="" class="h-16 w-auto hidden rounded shadow-sm border bg-white p-1">
+                <div>
                 <h1 class="text-2xl font-bold">Bienvenido: <span id="display-user" class="text-blue-600"></span></h1>
                 <nav class="mt-2 space-x-4">
                     <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Facturas / Cotizaciones</button>
@@ -38,6 +40,7 @@
                     <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Clientes</button>
                     <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Inventario</button>
                     <button id="nav-reportes" onclick="switchTab('tab-reportes')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Reportes</button>
+                    <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Rendimiento</button>
                     <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Usuarios de Sistema</button>
                     <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Datos del Negocio</button>
                 </nav>
@@ -170,6 +173,10 @@
                     <label class="block text-sm font-medium text-gray-700">Fecha Límite de Emisión</label>
                     <input id="biz-limite" type="date" class="w-full p-2 border rounded">
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Logo del Negocio</label>
+                    <input id="biz-logo" type="file" accept="image/*" class="w-full p-2 border rounded">
+                </div>
             </div>
             <button onclick="actualizarDatosNegocio()" class="mt-4 bg-blue-600 text-white p-2 px-4 rounded font-bold hover:bg-blue-700 transition">Guardar Datos Fiscales</button>
         </div>
@@ -185,10 +192,6 @@
                     <h3 class="font-bold text-xl mb-4 text-red-700 border-b pb-2">Egresos (Compras/Gastos)</h3>
                     <div id="lista-reporte-egresos" class="space-y-2 max-h-96 overflow-y-auto"></div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-md md:col-span-2">
-                    <h3 class="font-bold text-xl mb-4 text-blue-700 border-b pb-2">Rendimiento de Mecánicos (Eficiencia)</h3>
-                    <div id="lista-reporte-rendimiento" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-                </div>
             </div>
             <div class="bg-blue-800 text-white p-6 rounded-xl shadow-lg flex justify-between items-center">
                 <h3 class="text-2xl font-bold">Balance Total</h3>
@@ -198,6 +201,12 @@
                     <p id="balance-final-label" class="text-3xl font-black mt-2">Utilidad: Lps. 0.00</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Nueva Sección: Rendimiento de Mecánicos -->
+        <div id="tab-rendimiento" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 text-blue-700 border-b pb-2">Rendimiento de Mecánicos (Eficiencia)</h3>
+            <div id="lista-reporte-rendimiento" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
         </div>
 
         <!-- Panel Inventario -->
@@ -349,7 +358,8 @@
             document.getElementById(tabId).classList.remove('hidden');
             if(tabId === 'tab-clientes') cargarClientesFull();
             if(tabId === 'tab-catalogo') cargarCatalogo();
-            if(tabId === 'tab-reportes') cargarReportes();
+            if(tabId === 'tab-reportes') cargarBalances();
+            if(tabId === 'tab-rendimiento') cargarRendimiento();
             if(tabId === 'tab-documentos') cargarDocumentosRelacionados();
             if(tabId === 'tab-usuarios' && currentUser.rol === 'admin') cargarUsuarios();
             if(tabId === 'tab-negocio' && currentUser.rol === 'admin') cargarDatosNegocio();
@@ -373,6 +383,7 @@
             if (currentUser.rol === 'admin') {
                 document.getElementById('nav-catalogo').classList.remove('hidden');
                 document.getElementById('nav-reportes').classList.remove('hidden');
+                document.getElementById('nav-rendimiento').classList.remove('hidden');
                 document.getElementById('nav-usuarios').classList.remove('hidden');
                 document.getElementById('nav-negocio').classList.remove('hidden');
             }
@@ -754,6 +765,15 @@
             if (!resp) return;
             cacheNegocio = await resp.json();
             
+            // Actualizar Logo en la navegación para todos
+            const logoNav = document.getElementById('logo-nav');
+            if (cacheNegocio.logo) {
+                logoNav.src = cacheNegocio.logo;
+                logoNav.classList.remove('hidden');
+            } else {
+                logoNav.classList.add('hidden');
+            }
+
             // Llenar formulario si existe
             const bizNombre = document.getElementById('biz-nombre');
             if (bizNombre) {
@@ -769,6 +789,17 @@
         }
 
         async function actualizarDatosNegocio() {
+            const logoInput = document.getElementById('biz-logo');
+            let logoBase64 = cacheNegocio?.logo || null;
+
+            if (logoInput.files && logoInput.files[0]) {
+                logoBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(logoInput.files[0]);
+                });
+            }
+
             const data = {
                 nombre: document.getElementById('biz-nombre').value,
                 rtn: document.getElementById('biz-rtn').value,
@@ -777,7 +808,8 @@
                 cai: document.getElementById('biz-cai').value,
                 rango_desde: document.getElementById('biz-desde').value,
                 rango_hasta: document.getElementById('biz-hasta').value,
-                fecha_limite: document.getElementById('biz-limite').value
+                fecha_limite: document.getElementById('biz-limite').value,
+                logo: logoBase64
             };
 
             const resp = await apiRequest(`${API_BASE_URL}/negocio/`, {
@@ -1075,17 +1107,14 @@
             }
         }
 
-        async function cargarReportes() {
-            const [respIng, respEgr, respRend] = await Promise.all([
+        async function cargarBalances() {
+            const [respIng, respEgr] = await Promise.all([
                 apiRequest(`${API_BASE_URL}/caja/pagadas`, { headers: getHeaders() }),
-                apiRequest(`${API_BASE_URL}/reportes/egresos`, { headers: getHeaders() }),
-                apiRequest(`${API_BASE_URL}/reportes/rendimiento`, { headers: getHeaders() })
+                apiRequest(`${API_BASE_URL}/reportes/egresos`, { headers: getHeaders() })
             ]);
             
             const ingresos = await respIng.json();
             const egresos = await respEgr.json();
-            const rendimiento = await respRend.json();
-            
             const totalIng = ingresos.reduce((sum, o) => sum + o.total, 0);
             const totalEgr = egresos.reduce((sum, e) => sum + e.monto, 0);
             
@@ -1112,7 +1141,11 @@
                     <span class="text-red-600 font-bold">-Lps. ${e.monto.toFixed(2)}</span>
                 </div>
             `).join('');
+        }
 
+        async function cargarRendimiento() {
+            const respRend = await apiRequest(`${API_BASE_URL}/reportes/rendimiento`, { headers: getHeaders() });
+            const rendimiento = await respRend.json();
             document.getElementById('lista-reporte-rendimiento').innerHTML = rendimiento.map(r => `
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
                     <p class="text-sm text-blue-600 font-bold uppercase">${r.mecanico}</p>
@@ -1181,6 +1214,7 @@
             const content = document.getElementById('factura-content');
             content.innerHTML = `
                 <div class="text-center mb-4 uppercase">
+                    ${cacheNegocio?.logo ? `<img src="${cacheNegocio.logo}" class="h-20 mx-auto mb-2 object-contain">` : ''}
                     <h3 class="text-xl font-bold">${cacheNegocio?.nombre || 'Taller Pro Auto'}</h3>
                     <p class="text-xs">${cacheNegocio?.direccion || ''}</p>
                     <p class="text-xs">RTN: ${cacheNegocio?.rtn || ''} | TEL: ${cacheNegocio?.telefono || ''}</p>

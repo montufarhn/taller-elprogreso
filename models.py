@@ -85,3 +85,4 @@ class NegocioConfig(Base):
     rango_desde = Column(String)
     rango_hasta = Column(String)
     fecha_limite = Column(DateTime)
+    logo = Column(String, nullable=True)
