@@ -272,11 +272,17 @@
                 <label class="block font-bold mb-1 text-sm text-gray-700">Método de Pago:</label>
                 <select id="select-metodo" class="w-full p-2 border rounded mb-2 text-sm" onchange="toggleReferencia()">
                     <option value="Efectivo">Efectivo</option>
-                    <option value="Tarjeta">Tarjeta (POS)</option>
+                    <option value="Tarjeta">Tarjeta de Crédito/Débito (POS)</option>
+                    <option value="Transferencia">Transferencia Bancaria</option>
                 </select>
-                <div id="pos-referencia" class="hidden">
-                    <label class="block font-bold mb-1 text-sm text-gray-700">Ref. Transacción POS:</label>
-                    <input id="input-referencia" type="text" placeholder="Código POS" class="w-full p-2 border rounded text-sm">
+                <div id="pos-referencia" class="hidden space-y-2">
+                    <label id="label-referencia" class="block font-bold text-sm text-gray-700">Referencia:</label>
+                    <input id="input-referencia" type="text" placeholder="Número de confirmación" class="w-full p-2 border rounded text-sm">
+                    
+                    <div id="transfer-upload-section" class="hidden">
+                        <label class="block font-bold text-sm text-gray-700">Comprobante (Opcional):</label>
+                        <input id="input-comprobante" type="file" accept="image/*" class="w-full p-1 border rounded text-xs">
+                    </div>
                 </div>
                 <div id="print-payment-info" class="hidden text-sm border-t pt-2 mt-2">
                     <p><strong>Pago:</strong> <span id="print-metodo"></span> <span id="print-ref-span"></span></p>
@@ -398,14 +404,12 @@
             }
             if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') {
                 document.getElementById('panel-cajero').classList.remove('hidden');
+                document.getElementById('panel-historial').classList.remove('hidden');
             }
             if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico') {
                 document.getElementById('nav-taller').classList.remove('hidden');
                 // Actualización automática para el taller cada 10 segundos
                 setInterval(cargarTaller, 10000);
-            }
-            if (currentUser.rol === 'admin') {
-                document.getElementById('panel-historial').classList.remove('hidden');
             }
 
             // Abrir pestaña inicial según el rol
@@ -837,9 +841,9 @@
             const body = document.getElementById('tabla-clientes-body');
             body.innerHTML = clientes.map(c => `
                 <tr class="hover:bg-gray-50">
-                    <td class="p-3 border">${c.nombre}</td>
-                    <td class="p-3 border">${c.rtn || '---'}</td>
-                    <td class="p-3 border">${c.dni || '---'}</td>
+                    <td class="p-3 border truncate max-w-[150px]">${c.nombre}</td>
+                    <td class="p-3 border text-sm">${c.rtn || '---'}</td>
+                    <td class="p-3 border text-sm">${c.dni || '---'}</td>
                     <td class="p-3 border space-x-2">
                         ${currentUser.rol === 'admin' ? `
                             <button onclick="editarCliente(${c.id}, '${c.nombre}', '${c.rtn || ''}', '${c.dni || ''}', '${c.telefono}', '${c.direccion || ''}')" class="text-blue-600 hover:underline">Editar</button>
@@ -1033,16 +1037,20 @@
         function renderPagadas(datos) {
             const lista = document.getElementById('lista-pagadas');
             lista.innerHTML = datos.map(o => `
-                <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-red-300 transition-colors">
+                <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-blue-300 transition-colors">
                     <div>
                         <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
                         <p class="text-xs text-gray-500">RTN: ${o.cliente_rtn} | #${o.id} | ${new Date(o.fecha + 'Z').toLocaleDateString()}</p>
                     </div>
                     <div class="text-right">
-                        <p class="font-bold text-red-700">Lps. ${o.total.toFixed(2)}</p>
+                        <p class="font-bold text-blue-700">Lps. ${o.total.toFixed(2)}</p>
                         <div class="space-x-2 mt-1">
-                            <button onclick="mostrarFacturaFromCache(${o.id}, 'pagada')" class="text-blue-600 text-sm underline">Ver Detalle</button>
-                            <button onclick="anularFactura(${o.id})" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Anular</button>
+                            <button onclick="mostrarFacturaFromCache(${o.id}, 'pagada', true)" class="text-blue-600 text-sm font-bold border border-blue-600 px-2 py-1 rounded hover:bg-blue-600 hover:text-white transition">
+                                ${currentUser.rol === 'cajero' ? 'Revisar/Imprimir Copia' : 'Ver Detalle'}
+                            </button>
+                            ${currentUser.rol === 'admin' ? `
+                                <button onclick="anularFactura(${o.id})" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Anular</button>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -1183,16 +1191,24 @@
         }
 
         // Helper para mostrar factura desde cualquier cache
-        function mostrarFacturaFromCache(id, tipoCache) {
+        function mostrarFacturaFromCache(id, tipoCache, esCopia = false) {
             const source = tipoCache === 'pagada' ? cachePagadas : cacheCobros;
-            mostrarFactura(id, source);
+            mostrarFactura(id, source, esCopia);
         }
 
         function toggleReferencia() {
             const metodo = document.getElementById('select-metodo').value;
             const divRef = document.getElementById('pos-referencia');
-            if (metodo === 'Tarjeta') divRef.classList.remove('hidden');
-            else divRef.classList.add('hidden');
+            const labelRef = document.getElementById('label-referencia');
+            const transferSection = document.getElementById('transfer-upload-section');
+
+            if (metodo === 'Tarjeta' || metodo === 'Transferencia') {
+                divRef.classList.remove('hidden');
+                labelRef.innerText = metodo === 'Tarjeta' ? 'Ref. Transacción POS:' : 'Número de Confirmación Bancaria:';
+                transferSection.classList.toggle('hidden', metodo !== 'Transferencia');
+            } else {
+                divRef.classList.add('hidden');
+            }
         }
 
         function toggleEditarFactura() {
@@ -1217,8 +1233,8 @@
             }
         }
 
-        function mostrarFactura(id) {
-            const orden = arguments[1] ? arguments[1].find(o => o.id === id) : cacheCobros.find(o => o.id === id);
+        function mostrarFactura(id, source = null, esCopia = false) {
+            const orden = (source || cacheCobros).find(o => o.id == id);
             if (!orden) return;
 
             // Reset campos de pago
@@ -1227,6 +1243,7 @@
             document.getElementById('pos-referencia').classList.add('hidden');
             document.getElementById('print-payment-info').classList.add('hidden');
             document.getElementById('edit-factura-section').classList.add('hidden');
+            document.getElementById('input-comprobante').value = '';
             
             currentEditingOrderId = id;
             document.getElementById('edit-factura-nombre').value = orden.cliente_nombre;
@@ -1254,6 +1271,7 @@
             const content = document.getElementById('factura-content');
             content.innerHTML = `
                 <div class="text-center mb-4 uppercase">
+                    ${esCopia ? '<p class="text-lg font-black border-2 border-black inline-block px-4 py-1 mb-2">COPIA CLIENTE</p>' : ''}
                     ${cacheNegocio?.logo ? `<img src="${cacheNegocio.logo}" class="h-20 mx-auto mb-2 object-contain">` : ''}
                     <h3 class="text-xl font-bold">${cacheNegocio?.nombre || 'Taller Pro Auto'}</h3>
                     <p class="text-xs">${cacheNegocio?.direccion || ''}</p>
@@ -1273,8 +1291,7 @@
 
                 <div class="text-sm border-b pb-2">
                     <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
-                    <p><strong>RTN:</strong> ${orden.cliente_rtn || '---'}</p>
-                    <p><strong>DNI:</strong> ${orden.cliente_dni || '---'}</p>
+                    <p><strong>RTN:</strong> ${orden.cliente_rtn || '---'} | <strong>DNI:</strong> ${orden.cliente_dni || '---'}</p>
                     <p><strong>Fecha:</strong> ${new Date(orden.fecha + 'Z').toLocaleString()}</p>
                 </div>
                 <div class="text-sm space-y-1">
@@ -1289,6 +1306,12 @@
                     <span>TOTAL:</span>
                     <span>Lps. ${orden.total.toFixed(2)}</span>
                 </div>
+                ${orden.comprobante_pago ? `
+                    <div class="mt-4 p-2 border rounded bg-gray-50">
+                        <p class="text-[10px] font-bold text-gray-500 mb-1">COMPROBANTE ADJUNTO:</p>
+                        <img src="${orden.comprobante_pago}" class="w-full h-32 object-contain cursor-pointer" onclick="window.open(this.src)">
+                    </div>
+                ` : ''}
             `;
 
             document.getElementById('btn-confirmar-cobro').onclick = () => cobrar(orden.id);
@@ -1299,15 +1322,26 @@
         async function cobrar(id) {
             const metodo = document.getElementById('select-metodo').value;
             const referencia = document.getElementById('input-referencia').value;
+            const comprobanteInput = document.getElementById('input-comprobante');
 
-            if (metodo === 'Tarjeta' && !referencia) {
-                alert("Debe ingresar la referencia de la transacción del POS");
+            if ((metodo === 'Tarjeta' || metodo === 'Transferencia') && !referencia) {
+                alert("Debe ingresar el número de referencia o confirmación");
                 return;
+            }
+
+            let comprobanteBase64 = null;
+            if (comprobanteInput.files && comprobanteInput.files[0]) {
+                comprobanteBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(comprobanteInput.files[0]);
+                });
             }
 
             const params = new URLSearchParams({
                 metodo_pago: metodo,
-                referencia_pago: referencia || ""
+                referencia_pago: referencia || "",
+                comprobante: comprobanteBase64 || ""
             });
 
             const resp = await apiRequest(`${API_BASE_URL}/caja/cobrar/${id}?${params.toString()}`, { 

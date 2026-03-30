@@ -423,12 +423,19 @@ def actualizar_facturacion_orden(
 
 # Cajero: Realizar Cobro
 @app.post("/caja/cobrar/{orden_id}")
-def cobrar_orden(orden_id: int, metodo_pago: str, referencia_pago: Optional[str] = None, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def cobrar_orden(
+    orden_id: int, 
+    metodo_pago: str, 
+    referencia_pago: Optional[str] = None, 
+    comprobante: Optional[str] = None, 
+    db: Session = Depends(get_db), 
+    current_user: models.Usuario = Depends(get_current_user)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden: raise HTTPException(status_code=404, detail="Orden no encontrada")
     orden.estado = "Pagada"
     orden.metodo_pago = metodo_pago
     orden.referencia_pago = referencia_pago
+    orden.comprobante_pago = comprobante
 
     # Descontar del inventario
     items_raw = orden.descripcion.split(';')
@@ -447,7 +454,7 @@ def cobrar_orden(orden_id: int, metodo_pago: str, referencia_pago: Optional[str]
 
 # Admin: Listar Facturas Pagadas
 @app.get("/caja/pagadas")
-def listar_pagadas(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+def listar_pagadas(db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
     query = db.query(models.OrdenTrabajo, models.Cliente).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(models.OrdenTrabajo.estado == "Pagada").all()
@@ -500,7 +507,8 @@ def format_ordenes_pago(query):
         "cliente_rtn": o.factura_rtn or "Consumidor Final",
         "cliente_dni": o.factura_dni or "N/A",
         "metodo_pago": o.metodo_pago,
-        "referencia_pago": o.referencia_pago
+        "referencia_pago": o.referencia_pago,
+        "comprobante_pago": o.comprobante_pago
     } for o, c in query]
 
 # Admin/Cajero: Anular Factura (Cancelar definitivamente)

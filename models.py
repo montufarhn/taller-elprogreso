@@ -56,6 +56,7 @@ class OrdenTrabajo(Base):
     estado = Column(String, default="Pendiente") # 'Pendiente', 'Pagada'
     metodo_pago = Column(String, nullable=True)
     referencia_pago = Column(String, nullable=True)
+    comprobante_pago = Column(String, nullable=True) # Almacena imagen en Base64
     taller_completado = Column(Boolean, default=False)
     requiere_taller = Column(Boolean, default=False)
     mecanico_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
