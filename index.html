@@ -841,9 +841,9 @@
             const body = document.getElementById('tabla-clientes-body');
             body.innerHTML = clientes.map(c => `
                 <tr class="hover:bg-gray-50">
-                    <td class="p-3 border truncate max-w-[150px]">${c.nombre}</td>
-                    <td class="p-3 border text-sm">${c.rtn || '---'}</td>
-                    <td class="p-3 border text-sm">${c.dni || '---'}</td>
+                    <td class="p-3 border font-medium">${c.nombre}</td>
+                    <td class="p-3 border text-sm text-gray-600">${c.rtn || c.dni || 'Consumidor Final'}</td>
+                    <td class="p-3 border text-sm">${c.telefono}</td>
                     <td class="p-3 border space-x-2">
                         ${currentUser.rol === 'admin' ? `
                             <button onclick="editarCliente(${c.id}, '${c.nombre}', '${c.rtn || ''}', '${c.dni || ''}', '${c.telefono}', '${c.direccion || ''}')" class="text-blue-600 hover:underline">Editar</button>
@@ -1221,10 +1221,10 @@
             const rtn = document.getElementById('edit-factura-rtn').value;
             const dni = document.getElementById('edit-factura-dni').value;
 
-            const params = new URLSearchParams({ nombre, rtn, dni });
-            const resp = await apiRequest(`${API_BASE_URL}/ordenes/${currentEditingOrderId}/facturacion?${params.toString()}`, {
+            const resp = await apiRequest(`${API_BASE_URL}/ordenes/${currentEditingOrderId}/facturacion`, {
                 method: 'PUT',
-                headers: getHeaders()
+                headers: getHeaders(),
+                body: JSON.stringify({ nombre, rtn, dni })
             });
 
             if (resp && resp.ok) {
@@ -1338,15 +1338,14 @@
                 });
             }
 
-            const params = new URLSearchParams({
-                metodo_pago: metodo,
-                referencia_pago: referencia || "",
-                comprobante: comprobanteBase64 || ""
-            });
-
-            const resp = await apiRequest(`${API_BASE_URL}/caja/cobrar/${id}?${params.toString()}`, { 
+            const resp = await apiRequest(`${API_BASE_URL}/caja/cobrar/${id}`, { 
                 method: 'POST',
-                headers: getHeaders()
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    metodo_pago: metodo,
+                    referencia_pago: referencia || null,
+                    comprobante: comprobanteBase64
+                })
             });
             if (!resp) return;
 

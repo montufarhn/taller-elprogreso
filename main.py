@@ -87,6 +87,16 @@ class NegocioResponse(NegocioBase):
     class Config:
         from_attributes = True
 
+class FacturacionUpdate(BaseModel):
+    nombre: str
+    rtn: Optional[str] = None
+    dni: Optional[str] = None
+
+class CobroRequest(BaseModel):
+    metodo_pago: str
+    referencia_pago: Optional[str] = None
+    comprobante: Optional[str] = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Crear usuario admin inicial si no existe
@@ -408,34 +418,30 @@ def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuari
 @app.put("/ordenes/{orden_id}/facturacion")
 def actualizar_facturacion_orden(
     orden_id: int, 
-    nombre: str, 
-    rtn: Optional[str] = None, 
-    dni: Optional[str] = None, 
+    data: FacturacionUpdate,
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(get_current_user)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden: raise HTTPException(status_code=404)
-    orden.factura_nombre = nombre
-    orden.factura_rtn = rtn
-    orden.factura_dni = dni
+    orden.factura_nombre = data.nombre
+    orden.factura_rtn = data.rtn
+    orden.factura_dni = data.dni
     db.commit()
     return {"message": "Datos de facturación actualizados"}
 
 # Cajero: Realizar Cobro
 @app.post("/caja/cobrar/{orden_id}")
 def cobrar_orden(
-    orden_id: int, 
-    metodo_pago: str, 
-    referencia_pago: Optional[str] = None, 
-    comprobante: Optional[str] = None, 
+    orden_id: int,
+    cobro: CobroRequest,
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(get_current_user)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden: raise HTTPException(status_code=404, detail="Orden no encontrada")
     orden.estado = "Pagada"
-    orden.metodo_pago = metodo_pago
-    orden.referencia_pago = referencia_pago
-    orden.comprobante_pago = comprobante
+    orden.metodo_pago = cobro.metodo_pago
+    orden.referencia_pago = cobro.referencia_pago
+    orden.comprobante_pago = cobro.comprobante
 
     # Descontar del inventario
     items_raw = orden.descripcion.split(';')
