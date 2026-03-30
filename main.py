@@ -40,8 +40,7 @@ class UserResponse(UserBase):
 
 class ClienteBase(BaseModel):
     nombre: str
-    rtn: Optional[str] = None
-    dni: Optional[str] = None
+    identidad: Optional[str] = None
     telefono: str
     direccion: Optional[str] = None
 
@@ -89,8 +88,7 @@ class NegocioResponse(NegocioBase):
 
 class FacturacionUpdate(BaseModel):
     nombre: str
-    rtn: Optional[str] = None
-    dni: Optional[str] = None
+    identidad: Optional[str] = None
 
 class CobroRequest(BaseModel):
     metodo_pago: str
@@ -173,13 +171,21 @@ def check_jefe_or_admin(current_user: models.Usuario = Depends(get_current_user)
 
 def check_cajero_or_admin(current_user: models.Usuario = Depends(get_current_user)):
     if current_user.rol not in ["admin", "cajero"]:
-        raise HTTPException(status_code=403, detail="Permiso denegado: Solo el Administrador o el Cajero pueden anular facturas")
+        raise HTTPException(status_code=403, detail="Permiso denegado: Acceso restringido a Administrador o Cajero")
     return current_user
 
 def check_mecanico_or_admin(current_user: models.Usuario = Depends(get_current_user)):
     if current_user.rol not in ["admin", "mecanico"]:
         raise HTTPException(status_code=403, detail="Permiso denegado: Solo el Administrador o el Mecánico pueden ver esta pantalla")
     return current_user
+
+def procesar_identidad(identidad_str: Optional[str]):
+    if not identidad_str:
+        return None, None
+    digits = "".join(filter(str.isdigit, identidad_str))
+    if len(digits) > 13:
+        return identidad_str, None
+    return None, identidad_str
 
 @app.get("/")
 async def home():
@@ -282,6 +288,10 @@ def obtener_negocio(db: Session = Depends(get_db), current_user: models.Usuario 
 @app.put("/negocio/", response_model=NegocioResponse)
 def actualizar_negocio(negocio_data: NegocioBase, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     config = db.query(models.NegocioConfig).first()
+    if not config:
+        config = models.NegocioConfig()
+        db.add(config)
+    
     for key, value in negocio_data.model_dump().items():
         setattr(config, key, value)
     db.commit()
@@ -297,17 +307,15 @@ def listar_clientes(db: Session = Depends(get_db), current_user: models.Usuario 
 # Endpoint para el Jefe de Pista: Registrar Cliente
 @app.post("/clientes/", response_model=ClienteResponse)
 def crear_cliente(cliente: ClienteBase, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_jefe_or_admin)):
-    # Normalizar RTN: si es cadena vacía, tratar como None
-    rtn_val = cliente.rtn if cliente.rtn and cliente.rtn.strip() != "" else None
+    rtn, dni = procesar_identidad(cliente.identidad)
     
-    if rtn_val:
-        db_cliente = db.query(models.Cliente).filter(models.Cliente.rtn == rtn_val).first()
-        if db_cliente:
-            raise HTTPException(status_code=400, detail="Este RTN ya está registrado en el sistema.")
+    if rtn and db.query(models.Cliente).filter(models.Cliente.rtn == rtn).first():
+        raise HTTPException(status_code=400, detail="Este RTN ya está registrado.")
 
     nuevo_cliente = models.Cliente(
         nombre=cliente.nombre,
-        rtn=rtn_val,
+        rtn=rtn,
+        dni=dni,
         telefono=cliente.telefono,
         direccion=cliente.direccion
     )
@@ -322,18 +330,11 @@ def actualizar_cliente(cliente_id: int, cliente_data: ClienteBase, db: Session =
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     
-    # Normalizar RTN: tratar cadena vacía como None para evitar errores de unicidad
-    rtn_val = cliente_data.rtn if cliente_data.rtn and cliente_data.rtn.strip() != "" else None
-
-    # Verificar unicidad si el RTN está cambiando
-    if rtn_val and rtn_val != db_cliente.rtn:
-        db_existing = db.query(models.Cliente).filter(models.Cliente.rtn == rtn_val).first()
-        if db_existing:
-            raise HTTPException(status_code=400, detail="Este RTN ya pertenece a otro cliente")
+    rtn, dni = procesar_identidad(cliente_data.identidad)
 
     db_cliente.nombre = cliente_data.nombre
-    db_cliente.rtn = rtn_val
-    db_cliente.dni = cliente_data.dni
+    db_cliente.rtn = rtn
+    db_cliente.dni = dni
     db_cliente.telefono = cliente_data.telefono
     db_cliente.direccion = cliente_data.direccion
     
@@ -357,8 +358,7 @@ def crear_orden(
     descripcion: str, 
     total: float, 
     factura_nombre: str,
-    factura_rtn: Optional[str] = None,
-    factura_dni: Optional[str] = None,
+    factura_identidad: Optional[str] = None,
     tipo: str = "Orden", 
     placa: Optional[str] = None,
     marca: Optional[str] = None,
@@ -378,13 +378,15 @@ def crear_orden(
         vehiculo = models.Vehiculo(placa=placa, marca=marca, modelo=modelo, anio=anio, color=color, cliente_id=cliente_id)
         db.add(vehiculo)
         db.flush() # Para obtener el ID
+    
+    rtn, dni = procesar_identidad(factura_identidad)
 
     nueva_orden = models.OrdenTrabajo(
         cliente_id=cliente_id, 
         vehiculo_id=vehiculo.id if vehiculo else None,
         factura_nombre=factura_nombre,
-        factura_rtn=factura_rtn,
-        factura_dni=factura_dni,
+        factura_rtn=rtn,
+        factura_dni=dni,
         descripcion=descripcion, 
         total=total, 
         tipo=tipo,
@@ -402,18 +404,7 @@ def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuari
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(models.OrdenTrabajo.estado == "Pendiente").all()
     
-    return [{
-        "id": o.id,
-        "descripcion": o.descripcion,
-        "total": o.total,
-        "tipo": o.tipo,
-        "fecha": o.fecha,
-        "cliente_nombre": o.factura_nombre or c.nombre,
-        "cliente_rtn": o.factura_rtn or "Consumidor Final",
-        "cliente_dni": o.factura_dni or "N/A",
-        "metodo_pago": o.metodo_pago,
-        "referencia_pago": o.referencia_pago
-    } for o, c in query]
+    return format_ordenes_pago(query)
 
 @app.put("/ordenes/{orden_id}/facturacion")
 def actualizar_facturacion_orden(
@@ -423,9 +414,12 @@ def actualizar_facturacion_orden(
     current_user: models.Usuario = Depends(get_current_user)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden: raise HTTPException(status_code=404)
+    
+    rtn, dni = procesar_identidad(data.identidad)
+
     orden.factura_nombre = data.nombre
-    orden.factura_rtn = data.rtn
-    orden.factura_dni = data.dni
+    orden.factura_rtn = rtn
+    orden.factura_dni = dni
     db.commit()
     return {"message": "Datos de facturación actualizados"}
 
@@ -510,8 +504,8 @@ def format_ordenes_pago(query):
         "tipo": o.tipo,
         "fecha": o.fecha,
         "cliente_nombre": o.factura_nombre or c.nombre,
-        "cliente_rtn": o.factura_rtn or "Consumidor Final",
-        "cliente_dni": o.factura_dni or "N/A",
+        "cliente_rtn": o.factura_rtn or c.rtn or "Consumidor Final",
+        "cliente_dni": o.factura_dni or c.dni or "N/A",
         "metodo_pago": o.metodo_pago,
         "referencia_pago": o.referencia_pago,
         "comprobante_pago": o.comprobante_pago

@@ -61,8 +61,7 @@
                         <div id="autocomplete-list" class="absolute z-10 w-full bg-white border rounded shadow-lg hidden max-h-48 overflow-y-auto"></div>
                     </div>
                     <div class="flex gap-2">
-                        <input id="rtn" type="text" placeholder="RTN (Opcional)" class="w-1/3 p-2 border rounded">
-                        <input id="dni" type="text" placeholder="DNI (Opcional)" class="w-1/3 p-2 border rounded">
+                        <input id="identidad" type="text" placeholder="RTN o DNI (Opcional)" class="w-2/3 p-2 border rounded">
                         <input id="tel" type="text" placeholder="Teléfono" class="w-1/3 p-2 border rounded">
                     </div>
                     <input id="dir" type="text" placeholder="Dirección (Opcional)" class="w-full p-2 border rounded">
@@ -236,7 +235,7 @@
                 <h4 class="font-bold mb-3 text-gray-700">Registrar Nuevo Cliente</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
                     <input id="reg-nombre" type="text" placeholder="Nombre completo" class="p-2 border rounded">
-                    <input id="reg-rtn" type="text" placeholder="RTN" class="p-2 border rounded">
+                    <input id="reg-identidad" type="text" placeholder="RTN o DNI" class="p-2 border rounded">
                     <input id="reg-tel" type="text" placeholder="Teléfono" class="p-2 border rounded">
                     <input id="reg-dir" type="text" placeholder="Dirección" class="p-2 border rounded">
                 </div>
@@ -277,10 +276,7 @@
             <div id="edit-factura-section" class="hidden bg-yellow-50 p-4 border border-yellow-200 rounded mb-4 space-y-2">
                 <h4 class="font-bold text-yellow-800 text-sm text-center uppercase">Editar Datos de Facturación</h4>
                 <input id="edit-factura-nombre" type="text" placeholder="Nombre Factura" class="w-full p-2 border rounded text-sm">
-                <div class="flex gap-2">
-                    <input id="edit-factura-rtn" type="text" placeholder="RTN" class="w-1/2 p-2 border rounded text-sm">
-                    <input id="edit-factura-dni" type="text" placeholder="DNI" class="w-1/2 p-2 border rounded text-sm">
-                </div>
+                <input id="edit-factura-identidad" type="text" placeholder="RTN o DNI" class="w-full p-2 border rounded text-sm">
                 <button onclick="guardarCambiosFactura()" class="w-full bg-yellow-600 text-white p-2 rounded text-sm font-bold hover:bg-yellow-700">Aplicar Cambios</button>
             </div>
 
@@ -337,11 +333,11 @@
             
             // Cargar borradores de formularios
             document.getElementById('nombre').value = localStorage.getItem('draft_nombre') || '';
-            document.getElementById('rtn').value = localStorage.getItem('draft_rtn') || '';
+            document.getElementById('identidad').value = localStorage.getItem('draft_identidad') || '';
             
             // Guardar borradores automáticamente
             document.getElementById('nombre').addEventListener('input', (e) => localStorage.setItem('draft_nombre', e.target.value));
-            document.getElementById('rtn').addEventListener('input', (e) => localStorage.setItem('draft_rtn', e.target.value));
+            document.getElementById('identidad').addEventListener('input', (e) => localStorage.setItem('draft_identidad', e.target.value));
 
             // Cerrar autocompletado al hacer clic fuera
             document.addEventListener('click', (e) => {
@@ -388,6 +384,7 @@
             if(tabId === 'tab-reportes') cargarBalances();
             if(tabId === 'tab-rendimiento') cargarRendimiento();
             if(tabId === 'tab-documentos') cargarDocumentosRelacionados();
+            if(tabId === 'tab-taller') cargarTaller();
             if(tabId === 'tab-usuarios' && currentUser.rol === 'admin') cargarUsuarios();
             if(tabId === 'tab-negocio' && currentUser.rol === 'admin') cargarDatosNegocio();
         }
@@ -443,7 +440,7 @@
             if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico') cargarTaller();
             if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarCatalogo();
             if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarClientesFull();
-            if (currentUser.rol === 'admin') cargarPagadas();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') cargarPagadas();
         }
 
         // Envoltorio centralizado para peticiones API
@@ -509,14 +506,13 @@
 
             selectedClienteId = cliente.id;
             document.getElementById('nombre').value = cliente.nombre;
-            document.getElementById('rtn').value = cliente.rtn || '';
-            document.getElementById('dni').value = cliente.dni || '';
+            document.getElementById('identidad').value = cliente.rtn || cliente.dni || '';
             document.getElementById('tel').value = cliente.telefono || '';
             document.getElementById('dir').value = cliente.direccion || '';
 
             // Actualizar borradores al seleccionar
             localStorage.setItem('draft_nombre', cliente.nombre);
-            localStorage.setItem('draft_rtn', cliente.rtn || '');
+            localStorage.setItem('draft_identidad', cliente.rtn || cliente.dni || '');
 
             document.getElementById('autocomplete-list').classList.add('hidden');
         }
@@ -587,8 +583,7 @@
         async function enviarOrden(tipo) {
             const clienteData = {
                 nombre: document.getElementById('nombre').value,
-                rtn: document.getElementById('rtn').value,
-                dni: document.getElementById('dni').value,
+                identidad: document.getElementById('identidad').value,
                 telefono: document.getElementById('tel').value,
                 direccion: document.getElementById('dir').value
             };
@@ -636,8 +631,7 @@
                 descripcion: desc,
                 total: total,
                 factura_nombre: clienteData.nombre,
-                factura_rtn: clienteData.rtn,
-                factura_dni: clienteData.dni,
+                factura_identidad: clienteData.identidad,
                 tipo: tipo,
                 placa: document.getElementById('v-placa').value,
                 marca: document.getElementById('v-marca').value,
@@ -720,7 +714,7 @@
         async function crearClienteDirecto() {
             const data = {
                 nombre: document.getElementById('reg-nombre').value,
-                rtn: document.getElementById('reg-rtn').value,
+                identidad: document.getElementById('reg-identidad').value,
                 telefono: document.getElementById('reg-tel').value,
                 direccion: document.getElementById('reg-dir').value
             };
@@ -741,7 +735,7 @@
             if(resp.ok) {
                 alert("Cliente registrado exitosamente");
                 document.getElementById('reg-nombre').value = '';
-                document.getElementById('reg-rtn').value = '';
+                document.getElementById('reg-identidad').value = '';
                 document.getElementById('reg-tel').value = '';
                 document.getElementById('reg-dir').value = '';
                 cargarClientesFull();
@@ -761,7 +755,7 @@
             // (Esta función queda obsoleta por enviarOrden, pero se puede mantener para registros rápidos)
             const data = {
                 nombre: document.getElementById('nombre').value,
-                rtn: document.getElementById('rtn').value,
+                identidad: document.getElementById('identidad').value,
                 telefono: document.getElementById('tel').value,
                 direccion: document.getElementById('dir').value
             };
@@ -775,7 +769,7 @@
             if(response.ok) {
                 alert("Cliente guardado");
                 localStorage.removeItem('draft_nombre');
-                localStorage.removeItem('draft_rtn');
+                localStorage.removeItem('draft_identidad');
             } else {
                 const errorData = await response.json();
                 alert("Error: " + (errorData.detail || "No se pudo registrar el cliente"));
@@ -882,8 +876,7 @@
 
         async function editarCliente(id, nombre, rtn, dni, tel, dir) {
             const nuevoNombre = prompt("Nuevo nombre:", nombre);
-            const nuevoRtn = prompt("Nuevo RTN:", rtn);
-            const nuevoDni = prompt("Nuevo DNI:", dni);
+            const nuevaId = prompt("Nuevo RTN o DNI:", rtn || dni || '');
             const nuevoTel = prompt("Nuevo Teléfono:", tel);
             const nuevaDir = prompt("Nueva Dirección:", dir);
 
@@ -894,8 +887,7 @@
                 headers: getHeaders(),
                 body: JSON.stringify({ 
                     nombre: nuevoNombre, 
-                    rtn: nuevoRtn, 
-                    dni: nuevoDni,
+                    identidad: nuevaId,
                     telefono: nuevoTel || tel, 
                     direccion: nuevaDir || dir 
                 })
@@ -1009,20 +1001,23 @@
         }
 
         async function cargarCobros() {
-            const resp = await apiRequest(`${API_BASE_URL}/caja/pendientes`, { headers: getHeaders() });
+            // Cache busting para asegurar datos en tiempo real
+            const resp = await apiRequest(`${API_BASE_URL}/caja/pendientes?_=${Date.now()}`, { headers: getHeaders() });
             if (!resp) return;
 
             cacheCobros = await resp.json();
-            renderCobros(cacheCobros);
+            filtrarCobros(); // Mantiene el filtro si el usuario está buscando
         }
 
         function renderCobros(datos) {
             const lista = document.getElementById('lista-cobros');
-            lista.innerHTML = datos.map(o => `
+            lista.innerHTML = datos.map(o => {
+                const idVal = (o.cliente_rtn !== 'Consumidor Final' ? o.cliente_rtn : (o.cliente_dni !== 'N/A' ? o.cliente_dni : 'Consumidor Final'));
+                return `
                 <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-blue-300 transition-colors">
                     <div>
                         <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
-                        <p class="text-xs text-gray-500">RTN: ${o.cliente_rtn} | #${o.id}</p>
+                        <p class="text-xs text-gray-500">ID: ${idVal} | #${o.id}</p>
                     </div>
                     <div class="text-right">
                         <p class="font-bold text-blue-700">Lps. ${o.total.toFixed(2)}</p>
@@ -1032,7 +1027,7 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function filtrarCobros() {
@@ -1045,19 +1040,25 @@
         }
 
         async function cargarPagadas() {
-            const resp = await apiRequest(`${API_BASE_URL}/caja/pagadas`, { headers: getHeaders() });
+            const resp = await apiRequest(`${API_BASE_URL}/caja/pagadas?_=${Date.now()}`, { headers: getHeaders() });
             if (!resp) return;
             cachePagadas = await resp.json();
-            renderPagadas(cachePagadas);
+            filtrarPagadas(); // Mantiene el filtro si el usuario está buscando
         }
 
         function renderPagadas(datos) {
             const lista = document.getElementById('lista-pagadas');
-            lista.innerHTML = datos.map(o => `
+            lista.innerHTML = datos.map(o => {
+                const idVal = (o.cliente_rtn !== 'Consumidor Final' ? o.cliente_rtn : (o.cliente_dni !== 'N/A' ? o.cliente_dni : 'Consumidor Final'));
+                return `
                 <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-blue-300 transition-colors">
                     <div>
                         <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
-                        <p class="text-xs text-gray-500">RTN: ${o.cliente_rtn} | #${o.id} | ${new Date(o.fecha + 'Z').toLocaleDateString()}</p>
+                        <p class="text-xs text-gray-500">ID: ${idVal} | #${o.id} | ${new Date(o.fecha + 'Z').toLocaleDateString()}</p>
+                        <p class="text-[10px] font-bold mt-1 uppercase text-gray-400">
+                            Pago: ${o.metodo_pago} ${o.referencia_pago ? `(${o.referencia_pago})` : ''}
+                            ${o.comprobante_pago ? '<span class="ml-2 text-blue-600 font-black">📎 CON COMPROBANTE</span>' : ''}
+                        </p>
                     </div>
                     <div class="text-right">
                         <p class="font-bold text-blue-700">Lps. ${o.total.toFixed(2)}</p>
@@ -1071,20 +1072,21 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function filtrarPagadas() {
             const q = document.getElementById('search-pagada').value.toLowerCase();
             const filtrados = cachePagadas.filter(o => 
                 o.cliente_nombre.toLowerCase().includes(q) || 
-                o.cliente_rtn.includes(q)
+                o.cliente_rtn.includes(q) ||
+                o.cliente_dni.includes(q)
             );
             renderPagadas(filtrados);
         }
 
         async function cargarTaller() {
-            const resp = await apiRequest(`${API_BASE_URL}/taller/pendientes`, { headers: getHeaders() });
+            const resp = await apiRequest(`${API_BASE_URL}/taller/pendientes?_=${Date.now()}`, { headers: getHeaders() });
             if (!resp) return;
             const datos = await resp.json();
             const container = document.getElementById('lista-taller');
@@ -1199,7 +1201,7 @@
                 method: 'POST',
                 headers: getHeaders()
             });
-            if (resp) {
+            if (resp && resp.ok) {
                 alert("Factura anulada con éxito.");
                 document.getElementById('modal-factura').classList.add('hidden');
                 cargarPagadas();
@@ -1235,13 +1237,12 @@
 
         async function guardarCambiosFactura() {
             const nombre = document.getElementById('edit-factura-nombre').value;
-            const rtn = document.getElementById('edit-factura-rtn').value;
-            const dni = document.getElementById('edit-factura-dni').value;
+            const identidad = document.getElementById('edit-factura-identidad').value;
 
             const resp = await apiRequest(`${API_BASE_URL}/ordenes/${currentEditingOrderId}/facturacion`, {
                 method: 'PUT',
                 headers: getHeaders(),
-                body: JSON.stringify({ nombre, rtn, dni })
+                body: JSON.stringify({ nombre, identidad })
             });
 
             if (resp && resp.ok) {
@@ -1254,6 +1255,13 @@
             const orden = (source || cacheCobros).find(o => o.id == id);
             if (!orden) return;
 
+            const isPaid = orden.estado === 'Pagada';
+            
+            // Ajustar visibilidad de botones y secciones según el estado
+            document.getElementById('metodo-pago-section').classList.toggle('hidden', isPaid);
+            document.getElementById('btn-confirmar-cobro').classList.toggle('hidden', isPaid);
+            document.querySelector('#modal-factura h2').innerText = isPaid ? 'Consulta de Factura' : 'Detalle de Cobro';
+
             // Reset campos de pago
             document.getElementById('select-metodo').value = 'Efectivo';
             document.getElementById('input-referencia').value = '';
@@ -1262,10 +1270,15 @@
             document.getElementById('edit-factura-section').classList.add('hidden');
             document.getElementById('input-comprobante').value = '';
             
+            if (isPaid) {
+                document.getElementById('print-metodo').innerText = orden.metodo_pago;
+                document.getElementById('print-ref-span').innerText = orden.referencia_pago ? `(Ref: ${orden.referencia_pago})` : "";
+                document.getElementById('print-payment-info').classList.remove('hidden');
+            }
+
             currentEditingOrderId = id;
             document.getElementById('edit-factura-nombre').value = orden.cliente_nombre;
-            document.getElementById('edit-factura-rtn').value = orden.cliente_rtn === 'Consumidor Final' ? '' : orden.cliente_rtn;
-            document.getElementById('edit-factura-dni').value = orden.cliente_dni === 'N/A' ? '' : orden.cliente_dni;
+            document.getElementById('edit-factura-identidad').value = (orden.cliente_rtn !== 'Consumidor Final' ? orden.cliente_rtn : (orden.cliente_dni !== 'N/A' ? orden.cliente_dni : ''));
 
             const items = orden.descripcion.split(';').filter(r => r.trim() !== "").map(row => {
                 const parts = row.split('|');
@@ -1285,10 +1298,20 @@
                 return { cant: 1, nombre: row, precio: 0 }; // Texto simple sin formato
             });
 
+            // Lógica para detectar etiqueta dinámica RTN vs DNI en la factura
+            let idLabel = "RTN";
+            let idValue = orden.cliente_rtn;
+            if (orden.cliente_rtn === 'Consumidor Final' && orden.cliente_dni !== 'N/A') {
+                idLabel = "DNI";
+                idValue = orden.cliente_dni;
+            } else if (orden.cliente_rtn === 'Consumidor Final' && orden.cliente_dni === 'N/A') {
+                idValue = "Consumidor Final";
+            }
+
             const content = document.getElementById('factura-content');
             content.innerHTML = `
                 <div class="text-center mb-4 uppercase">
-                    ${esCopia ? '<p class="text-lg font-black border-2 border-black inline-block px-4 py-1 mb-2">COPIA CLIENTE</p>' : ''}
+                    ${esCopia ? '<p class="hidden print:block text-lg font-black border-2 border-black inline-block px-4 py-1 mb-2 mx-auto">COPIA CLIENTE</p>' : ''}
                     ${cacheNegocio?.logo ? `<img src="${cacheNegocio.logo}" class="h-20 mx-auto mb-2 object-contain">` : ''}
                     <h3 class="text-xl font-bold">${cacheNegocio?.nombre || 'Taller Pro Auto'}</h3>
                     <p class="text-xs">${cacheNegocio?.direccion || ''}</p>
@@ -1308,7 +1331,7 @@
 
                 <div class="text-sm border-b pb-2">
                     <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
-                    <p><strong>RTN:</strong> ${orden.cliente_rtn || '---'} | <strong>DNI:</strong> ${orden.cliente_dni || '---'}</p>
+                    <p><strong>${idLabel}:</strong> ${idValue}</p>
                     <p><strong>Fecha:</strong> ${new Date(orden.fecha + 'Z').toLocaleString()}</p>
                 </div>
                 <div class="text-sm space-y-1">
