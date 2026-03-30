@@ -28,24 +28,26 @@
     </div>
 
     <!-- Panel Principal (Oculto al inicio) -->
-    <div id="dashboard" class="hidden max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
-            <div class="flex items-center gap-4">
-                <img id="logo-nav" src="" class="h-16 w-auto hidden rounded shadow-sm border bg-white p-1">
-                <div>
-                <h1 class="text-2xl font-bold">Bienvenido: <span id="display-user" class="text-blue-600"></span></h1>
-                <nav class="mt-2 space-x-4">
-                    <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Facturas / Cotizaciones</button>
-                    <button id="nav-taller" onclick="switchTab('tab-taller')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Pantalla Taller</button>
-                    <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Clientes</button>
-                    <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Inventario</button>
-                    <button id="nav-reportes" onclick="switchTab('tab-reportes')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Reportes</button>
-                    <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Rendimiento</button>
-                    <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Usuarios de Sistema</button>
-                    <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-600 hover:text-blue-600 font-medium">Datos del Negocio</button>
-                </nav>
+    <div id="dashboard" class="hidden max-w-5xl mx-auto">
+        <!-- Encabezado y Navegación Principal -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8 border-t-4 border-blue-600">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pb-4 border-b">
+                <div class="flex items-center gap-4">
+                    <img id="logo-nav" src="" class="h-16 w-auto hidden rounded shadow-sm border p-1 bg-white">
+                    <h1 class="text-2xl font-bold text-gray-800">Bienvenido: <span id="display-user" class="text-blue-600"></span></h1>
+                </div>
+                <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition font-bold border border-red-200">Cerrar Sesión</button>
             </div>
-            <button onclick="logout()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200">Cerrar Sesión</button>
+            <nav class="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Facturas / Cotizaciones</button>
+                <button id="nav-taller" onclick="switchTab('tab-taller')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Pantalla Taller</button>
+                <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Clientes</button>
+                <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Inventario</button>
+                <button id="nav-reportes" onclick="switchTab('tab-reportes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Reportes</button>
+                <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Rendimiento</button>
+                <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Usuarios de Sistema</button>
+                <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Datos del Negocio</button>
+            </nav>
         </div>
 
         <!-- Nueva Sección: Facturas / Cotizaciones -->
@@ -59,8 +61,9 @@
                         <div id="autocomplete-list" class="absolute z-10 w-full bg-white border rounded shadow-lg hidden max-h-48 overflow-y-auto"></div>
                     </div>
                     <div class="flex gap-2">
-                        <input id="rtn" type="text" placeholder="RTN (Opcional)" class="w-1/2 p-2 border rounded">
-                        <input id="tel" type="text" placeholder="Teléfono" class="w-1/2 p-2 border rounded">
+                        <input id="rtn" type="text" placeholder="RTN (Opcional)" class="w-1/3 p-2 border rounded">
+                        <input id="dni" type="text" placeholder="DNI (Opcional)" class="w-1/3 p-2 border rounded">
+                        <input id="tel" type="text" placeholder="Teléfono" class="w-1/3 p-2 border rounded">
                     </div>
                     <input id="dir" type="text" placeholder="Dirección (Opcional)" class="w-full p-2 border rounded">
                     <div class="grid grid-cols-2 gap-2 mt-2 p-2 bg-blue-50 rounded border border-blue-100">
@@ -299,6 +302,7 @@
         let cacheCobros = [];
         let cachePagadas = [];
         let cacheNegocio = null;
+        let currentEditingOrderId = null;
 
         // Al cargar la página, verificar si hay sesión guardada
         window.onload = () => {
@@ -485,6 +489,7 @@
             selectedClienteId = cliente.id;
             document.getElementById('nombre').value = cliente.nombre;
             document.getElementById('rtn').value = cliente.rtn || '';
+            document.getElementById('dni').value = cliente.dni || '';
             document.getElementById('tel').value = cliente.telefono || '';
             document.getElementById('dir').value = cliente.direccion || '';
 
@@ -562,6 +567,7 @@
             const clienteData = {
                 nombre: document.getElementById('nombre').value,
                 rtn: document.getElementById('rtn').value,
+                dni: document.getElementById('dni').value,
                 telefono: document.getElementById('tel').value,
                 direccion: document.getElementById('dir').value
             };
@@ -608,6 +614,9 @@
                 cliente_id: clienteId,
                 descripcion: desc,
                 total: total,
+                factura_nombre: clienteData.nombre,
+                factura_rtn: clienteData.rtn,
+                factura_dni: clienteData.dni,
                 tipo: tipo,
                 placa: document.getElementById('v-placa').value,
                 marca: document.getElementById('v-marca').value,
@@ -830,9 +839,10 @@
                 <tr class="hover:bg-gray-50">
                     <td class="p-3 border">${c.nombre}</td>
                     <td class="p-3 border">${c.rtn || '---'}</td>
+                    <td class="p-3 border">${c.dni || '---'}</td>
                     <td class="p-3 border space-x-2">
                         ${currentUser.rol === 'admin' ? `
-                            <button onclick="editarCliente(${c.id}, '${c.nombre}', '${c.rtn || ''}', '${c.telefono}', '${c.direccion || ''}')" class="text-blue-600 hover:underline">Editar</button>
+                            <button onclick="editarCliente(${c.id}, '${c.nombre}', '${c.rtn || ''}', '${c.dni || ''}', '${c.telefono}', '${c.direccion || ''}')" class="text-blue-600 hover:underline">Editar</button>
                             <button onclick="eliminarCliente(${c.id})" class="text-red-600 hover:underline">Borrar</button>
                         ` : '<span class="text-gray-400 text-sm">Solo lectura</span>'}
                     </td>
@@ -849,9 +859,10 @@
             renderClientesTable(filtrados);
         }
 
-        async function editarCliente(id, nombre, rtn, tel, dir) {
+        async function editarCliente(id, nombre, rtn, dni, tel, dir) {
             const nuevoNombre = prompt("Nuevo nombre:", nombre);
             const nuevoRtn = prompt("Nuevo RTN:", rtn);
+            const nuevoDni = prompt("Nuevo DNI:", dni);
             const nuevoTel = prompt("Nuevo Teléfono:", tel);
             const nuevaDir = prompt("Nueva Dirección:", dir);
 
@@ -863,6 +874,7 @@
                 body: JSON.stringify({ 
                     nombre: nuevoNombre, 
                     rtn: nuevoRtn, 
+                    dni: nuevoDni,
                     telefono: nuevoTel || tel, 
                     direccion: nuevaDir || dir 
                 })
@@ -1183,6 +1195,28 @@
             else divRef.classList.add('hidden');
         }
 
+        function toggleEditarFactura() {
+            const section = document.getElementById('edit-factura-section');
+            section.classList.toggle('hidden');
+        }
+
+        async function guardarCambiosFactura() {
+            const nombre = document.getElementById('edit-factura-nombre').value;
+            const rtn = document.getElementById('edit-factura-rtn').value;
+            const dni = document.getElementById('edit-factura-dni').value;
+
+            const params = new URLSearchParams({ nombre, rtn, dni });
+            const resp = await apiRequest(`${API_BASE_URL}/ordenes/${currentEditingOrderId}/facturacion?${params.toString()}`, {
+                method: 'PUT',
+                headers: getHeaders()
+            });
+
+            if (resp && resp.ok) {
+                alert("Datos de facturación actualizados");
+                location.reload(); 
+            }
+        }
+
         function mostrarFactura(id) {
             const orden = arguments[1] ? arguments[1].find(o => o.id === id) : cacheCobros.find(o => o.id === id);
             if (!orden) return;
@@ -1192,6 +1226,12 @@
             document.getElementById('input-referencia').value = '';
             document.getElementById('pos-referencia').classList.add('hidden');
             document.getElementById('print-payment-info').classList.add('hidden');
+            document.getElementById('edit-factura-section').classList.add('hidden');
+            
+            currentEditingOrderId = id;
+            document.getElementById('edit-factura-nombre').value = orden.cliente_nombre;
+            document.getElementById('edit-factura-rtn').value = orden.cliente_rtn === 'Consumidor Final' ? '' : orden.cliente_rtn;
+            document.getElementById('edit-factura-dni').value = orden.cliente_dni === 'N/A' ? '' : orden.cliente_dni;
 
             const items = orden.descripcion.split(';').filter(r => r.trim() !== "").map(row => {
                 const parts = row.split('|');
@@ -1233,7 +1273,8 @@
 
                 <div class="text-sm border-b pb-2">
                     <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
-                    <p><strong>RTN:</strong> ${orden.cliente_rtn}</p>
+                    <p><strong>RTN:</strong> ${orden.cliente_rtn || '---'}</p>
+                    <p><strong>DNI:</strong> ${orden.cliente_dni || '---'}</p>
                     <p><strong>Fecha:</strong> ${new Date(orden.fecha + 'Z').toLocaleString()}</p>
                 </div>
                 <div class="text-sm space-y-1">

@@ -41,6 +41,7 @@ class UserResponse(UserBase):
 class ClienteBase(BaseModel):
     nombre: str
     rtn: Optional[str] = None
+    dni: Optional[str] = None
     telefono: str
     direccion: Optional[str] = None
 
@@ -322,6 +323,7 @@ def actualizar_cliente(cliente_id: int, cliente_data: ClienteBase, db: Session =
 
     db_cliente.nombre = cliente_data.nombre
     db_cliente.rtn = rtn_val
+    db_cliente.dni = cliente_data.dni
     db_cliente.telefono = cliente_data.telefono
     db_cliente.direccion = cliente_data.direccion
     
@@ -344,6 +346,9 @@ def crear_orden(
     cliente_id: int, 
     descripcion: str, 
     total: float, 
+    factura_nombre: str,
+    factura_rtn: Optional[str] = None,
+    factura_dni: Optional[str] = None,
     tipo: str = "Orden", 
     placa: Optional[str] = None,
     marca: Optional[str] = None,
@@ -367,6 +372,9 @@ def crear_orden(
     nueva_orden = models.OrdenTrabajo(
         cliente_id=cliente_id, 
         vehiculo_id=vehiculo.id if vehiculo else None,
+        factura_nombre=factura_nombre,
+        factura_rtn=factura_rtn,
+        factura_dni=factura_dni,
         descripcion=descripcion, 
         total=total, 
         tipo=tipo,
@@ -390,11 +398,28 @@ def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuari
         "total": o.total,
         "tipo": o.tipo,
         "fecha": o.fecha,
-        "cliente_nombre": c.nombre,
-        "cliente_rtn": c.rtn or "Consumidor Final",
+        "cliente_nombre": o.factura_nombre or c.nombre,
+        "cliente_rtn": o.factura_rtn or "Consumidor Final",
+        "cliente_dni": o.factura_dni or "N/A",
         "metodo_pago": o.metodo_pago,
         "referencia_pago": o.referencia_pago
     } for o, c in query]
+
+@app.put("/ordenes/{orden_id}/facturacion")
+def actualizar_facturacion_orden(
+    orden_id: int, 
+    nombre: str, 
+    rtn: Optional[str] = None, 
+    dni: Optional[str] = None, 
+    db: Session = Depends(get_db), 
+    current_user: models.Usuario = Depends(get_current_user)):
+    orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
+    if not orden: raise HTTPException(status_code=404)
+    orden.factura_nombre = nombre
+    orden.factura_rtn = rtn
+    orden.factura_dni = dni
+    db.commit()
+    return {"message": "Datos de facturación actualizados"}
 
 # Cajero: Realizar Cobro
 @app.post("/caja/cobrar/{orden_id}")
@@ -471,8 +496,9 @@ def format_ordenes_pago(query):
         "total": o.total,
         "tipo": o.tipo,
         "fecha": o.fecha,
-        "cliente_nombre": c.nombre,
-        "cliente_rtn": c.rtn or "Consumidor Final",
+        "cliente_nombre": o.factura_nombre or c.nombre,
+        "cliente_rtn": o.factura_rtn or "Consumidor Final",
+        "cliente_dni": o.factura_dni or "N/A",
         "metodo_pago": o.metodo_pago,
         "referencia_pago": o.referencia_pago
     } for o, c in query]

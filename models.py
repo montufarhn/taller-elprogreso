@@ -18,6 +18,7 @@ class Cliente(Base):
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False)
     rtn = Column(String, unique=True, nullable=True)
+    dni = Column(String, nullable=True)
     telefono = Column(String)
     direccion = Column(String, nullable=True)
     vehiculos = relationship("Vehiculo", back_populates="dueno")
@@ -49,6 +50,9 @@ class OrdenTrabajo(Base):
     descripcion = Column(String)
     total = Column(Float, default=0.0)
     tipo = Column(String, default="Orden") # 'Orden' o 'Cotizacion'
+    factura_nombre = Column(String)
+    factura_rtn = Column(String, nullable=True)
+    factura_dni = Column(String, nullable=True)
     estado = Column(String, default="Pendiente") # 'Pendiente', 'Pagada'
     metodo_pago = Column(String, nullable=True)
     referencia_pago = Column(String, nullable=True)
