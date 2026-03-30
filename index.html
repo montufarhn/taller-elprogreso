@@ -249,9 +249,10 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-50">
-                            <th class="p-3 border">Nombre</th>
-                            <th class="p-3 border">RTN</th>
-                            <th class="p-3 border">Acciones</th>
+                            <th class="p-3 border w-1/3">Nombre</th>
+                            <th class="p-3 border w-1/4">RTN/DNI</th>
+                            <th class="p-3 border w-1/4">Teléfono</th>
+                            <th class="p-3 border w-auto text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-clientes-body"></tbody>
@@ -262,11 +263,27 @@
 
     <!-- Modal de Factura Detallada (Oculto) -->
     <div id="modal-factura" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
-            <h2 class="text-2xl font-bold mb-4 text-center border-b pb-2">Detalle de Cobro</h2>
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-2xl font-bold text-gray-800">Detalle del Documento</h2>
+                <button onclick="toggleEditarFactura()" class="text-blue-600 text-sm font-bold hover:underline">📝 Editar Datos</button>
+            </div>
+            
             <div id="factura-content" class="space-y-4 mb-6">
                 <!-- Contenido dinámico de la factura -->
             </div>
+
+            <!-- Editor de datos de factura (Sección que faltaba y causaba el error) -->
+            <div id="edit-factura-section" class="hidden bg-yellow-50 p-4 border border-yellow-200 rounded mb-4 space-y-2">
+                <h4 class="font-bold text-yellow-800 text-sm text-center uppercase">Editar Datos de Facturación</h4>
+                <input id="edit-factura-nombre" type="text" placeholder="Nombre Factura" class="w-full p-2 border rounded text-sm">
+                <div class="flex gap-2">
+                    <input id="edit-factura-rtn" type="text" placeholder="RTN" class="w-1/2 p-2 border rounded text-sm">
+                    <input id="edit-factura-dni" type="text" placeholder="DNI" class="w-1/2 p-2 border rounded text-sm">
+                </div>
+                <button onclick="guardarCambiosFactura()" class="w-full bg-yellow-600 text-white p-2 rounded text-sm font-bold hover:bg-yellow-700">Aplicar Cambios</button>
+            </div>
+
             <!-- Sección de Pago -->
             <div id="metodo-pago-section" class="mt-4 p-3 bg-gray-50 rounded border mb-4">
                 <label class="block font-bold mb-1 text-sm text-gray-700">Método de Pago:</label>
