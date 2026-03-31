@@ -257,6 +257,19 @@ def crear_item_inventario(item: CatalogoBase, db: Session = Depends(get_db), adm
     db.refresh(nuevo_item)
     return nuevo_item
 
+@app.put("/inventario/{item_id}", response_model=CatalogoResponse)
+def actualizar_item_catalogo(item_id: int, item_data: CatalogoBase, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+    item = db.query(models.ItemCatalogo).filter(models.ItemCatalogo.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item no encontrado")
+    item.nombre = item_data.nombre
+    item.precio = item_data.precio
+    item.tipo = item_data.tipo
+    item.existencia = item_data.existencia
+    db.commit()
+    db.refresh(item)
+    return item
+
 @app.post("/inventario/comprar")
 def comprar_inventario(item_id: int, cantidad: int, costo_total: float, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     item = db.query(models.ItemCatalogo).filter(models.ItemCatalogo.id == item_id).first()
@@ -394,7 +407,18 @@ def crear_orden(
     )
     db.add(nueva_orden)
     db.commit()
-    return {"message": f"{tipo} creada exitosamente"}
+    db.refresh(nueva_orden)
+    return {
+        "id": nueva_orden.id,
+        "descripcion": nueva_orden.descripcion,
+        "total": nueva_orden.total,
+        "tipo": nueva_orden.tipo,
+        "fecha": nueva_orden.fecha,
+        "estado": nueva_orden.estado,
+        "cliente_nombre": nueva_orden.factura_nombre,
+        "cliente_rtn": nueva_orden.factura_rtn or "Consumidor Final",
+        "cliente_dni": nueva_orden.factura_dni or "N/A"
+    }
 
 # Cajero: Ver Ordenes Pendientes de Cobro
 @app.get("/caja/pendientes")
@@ -402,7 +426,15 @@ def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuari
     # Unimos con la tabla de clientes para obtener nombre y RTN para la búsqueda
     query = db.query(models.OrdenTrabajo, models.Cliente).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
-    ).filter(models.OrdenTrabajo.estado == "Pendiente").all()
+    ).filter(models.OrdenTrabajo.estado == "Pendiente", models.OrdenTrabajo.tipo == "Orden").all()
+    
+    return format_ordenes_pago(query)
+
+@app.get("/caja/cotizaciones")
+def listar_cotizaciones(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    query = db.query(models.OrdenTrabajo, models.Cliente).join(
+        models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
+    ).filter(models.OrdenTrabajo.tipo == "Cotizacion", models.OrdenTrabajo.estado == "Pendiente").all()
     
     return format_ordenes_pago(query)
 
@@ -457,7 +489,7 @@ def cobrar_orden(
 def listar_pagadas(db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
     query = db.query(models.OrdenTrabajo, models.Cliente).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
-    ).filter(models.OrdenTrabajo.estado == "Pagada").all()
+    ).filter(models.OrdenTrabajo.estado.in_(["Pagada", "Anulada"])).all()
     
     return format_ordenes_pago(query)
 
@@ -503,6 +535,7 @@ def format_ordenes_pago(query):
         "total": o.total,
         "tipo": o.tipo,
         "fecha": o.fecha,
+        "estado": o.estado,
         "cliente_nombre": o.factura_nombre or c.nombre,
         "cliente_rtn": o.factura_rtn or c.rtn or "Consumidor Final",
         "cliente_dni": o.factura_dni or c.dni or "N/A",
@@ -510,6 +543,18 @@ def format_ordenes_pago(query):
         "referencia_pago": o.referencia_pago,
         "comprobante_pago": o.comprobante_pago
     } for o, c in query]
+
+# Admin/Cajero: Convertir Cotización a Orden (Enviar a Caja)
+@app.post("/caja/convertir-cotizacion/{orden_id}")
+def convertir_cotizacion(orden_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
+    orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id, models.OrdenTrabajo.tipo == "Cotizacion").first()
+    if not orden:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    
+    orden.tipo = "Orden"
+    orden.fecha = datetime.now(timezone.utc) # Actualizamos la fecha al momento de convertir
+    db.commit()
+    return {"message": "Cotización enviada a caja exitosamente"}
 
 # Admin/Cajero: Anular Factura (Cancelar definitivamente)
 @app.post("/caja/anular/{orden_id}")
