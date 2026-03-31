@@ -1498,8 +1498,24 @@
         async function cargarRendimiento() {
             const respRend = await apiRequest(`${API_BASE_URL}/reportes/rendimiento`, { headers: getHeaders() });
             const rendimiento = await respRend.json();
-            document.getElementById('lista-reporte-rendimiento').innerHTML = rendimiento.map(r => `
-                <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+            const listaRendimiento = document.getElementById('lista-reporte-rendimiento');
+            if (!rendimiento.length) {
+                listaRendimiento.innerHTML = `
+                    <div class="col-span-1 bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                        <p class="text-gray-700 font-semibold">No hay datos de rendimiento disponibles.</p>
+                        <p class="text-sm text-gray-500">Asegúrate de que haya órdenes de taller pendientes, en progreso o completadas.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listaRendimiento.innerHTML = rendimiento.map(r => `
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg ${r.resumen ? 'bg-yellow-50 border-yellow-200' : ''}">
+                    <h4 class="font-semibold text-lg ${r.resumen ? 'text-yellow-700' : 'text-blue-700'}">${r.mecanico}</h4>
+                    <p class="text-sm text-gray-600">Trabajos completados: <span class="font-bold">${r.trabajos_completados}</span></p>
+                    <p class="text-sm text-gray-600">Tiempo promedio por trabajo: <span class="font-bold">${r.tiempo_promedio_min} min</span></p>
+                    <p class="text-sm text-gray-600">Trabajos en progreso / pendientes: <span class="font-bold">${r.trabajos_en_progreso || 0}</span></p>
+                </div>
             `).join('');
         }
 

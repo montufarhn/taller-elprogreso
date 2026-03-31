@@ -512,7 +512,7 @@ def listar_egresos(db: Session = Depends(get_db), admin: models.Usuario = Depend
 @app.get("/reportes/rendimiento")
 def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     # Obtener trabajos completados que tienen registro de tiempo
-    trabajos = db.query(models.OrdenTrabajo, models.Usuario.username).join(
+    trabajos_completados = db.query(models.OrdenTrabajo, models.Usuario.username).join(
         models.Usuario, models.OrdenTrabajo.mecanico_id == models.Usuario.id
     ).filter(
         models.OrdenTrabajo.taller_completado == True,
@@ -520,24 +520,56 @@ def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = D
         models.OrdenTrabajo.fin_trabajo != None
     ).all()
 
+    # Obtener trabajos en progreso asignados a mecánicos
+    trabajos_en_progreso = db.query(models.OrdenTrabajo, models.Usuario.username).join(
+        models.Usuario, models.OrdenTrabajo.mecanico_id == models.Usuario.id
+    ).filter(
+        models.OrdenTrabajo.requiere_taller == True,
+        models.OrdenTrabajo.taller_completado == False,
+        models.OrdenTrabajo.mecanico_id != None
+    ).all()
+
     stats = {}
-    for orden, name in trabajos:
+    for orden, name in trabajos_completados:
         if name not in stats:
-            stats[name] = {"total_trabajos": 0, "tiempo_total_segundos": 0}
+            stats[name] = {"total_trabajos": 0, "tiempo_total_segundos": 0, "trabajos_en_progreso": 0}
         
-        # Calcular duración en segundos
         duracion = (orden.fin_trabajo - orden.inicio_trabajo).total_seconds()
         stats[name]["total_trabajos"] += 1
         stats[name]["tiempo_total_segundos"] += duracion
 
+    for orden, name in trabajos_en_progreso:
+        if name not in stats:
+            stats[name] = {"total_trabajos": 0, "tiempo_total_segundos": 0, "trabajos_en_progreso": 0}
+        stats[name]["trabajos_en_progreso"] += 1
+
     resultado = []
     for name, data in stats.items():
-        promedio_minutos = (data["tiempo_total_segundos"] / data["total_trabajos"]) / 60
+        promedio_minutos = 0
+        if data["total_trabajos"] > 0:
+            promedio_minutos = (data["tiempo_total_segundos"] / data["total_trabajos"]) / 60
         resultado.append({
             "mecanico": name,
             "trabajos_completados": data["total_trabajos"],
-            "tiempo_promedio_min": round(promedio_minutos, 2)
+            "tiempo_promedio_min": round(promedio_minutos, 2),
+            "trabajos_en_progreso": data["trabajos_en_progreso"]
         })
+
+    # Trabajos pendientes sin asignar en el taller
+    pendientes_sin_asignar = db.query(models.OrdenTrabajo).filter(
+        models.OrdenTrabajo.requiere_taller == True,
+        models.OrdenTrabajo.taller_completado == False,
+        models.OrdenTrabajo.mecanico_id == None
+    ).count()
+    if pendientes_sin_asignar > 0:
+        resultado.append({
+            "mecanico": "Pendientes sin asignar",
+            "trabajos_completados": 0,
+            "tiempo_promedio_min": 0,
+            "trabajos_en_progreso": pendientes_sin_asignar,
+            "resumen": True
+        })
+
     return resultado
 
 def format_ordenes_pago(query, db):
