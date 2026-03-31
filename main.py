@@ -169,6 +169,11 @@ def check_jefe_or_admin(current_user: models.Usuario = Depends(get_current_user)
         raise HTTPException(status_code=403, detail="Permiso denegado: Solo el Administrador o Jefe de Pista pueden registrar clientes")
     return current_user
 
+def check_cajero_o_jefe_o_admin(current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ["admin", "cajero", "jefe_pista"]:
+        raise HTTPException(status_code=403, detail="Permiso denegado: Acceso restringido a Administrador, Cajero o Jefe de Pista")
+    return current_user
+
 def check_cajero_or_admin(current_user: models.Usuario = Depends(get_current_user)):
     if current_user.rol not in ["admin", "cajero"]:
         raise HTTPException(status_code=403, detail="Permiso denegado: Acceso restringido a Administrador o Cajero")
@@ -426,17 +431,17 @@ def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuari
     # Unimos con la tabla de clientes para obtener nombre y RTN para la búsqueda
     query = db.query(models.OrdenTrabajo, models.Cliente).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
-    ).filter(models.OrdenTrabajo.estado == "Pendiente", models.OrdenTrabajo.tipo == "Orden").all()
+    ).filter(models.OrdenTrabajo.estado == "Pendiente", models.OrdenTrabajo.tipo == "Orden").order_by(models.OrdenTrabajo.id).all()
     
-    return format_ordenes_pago(query)
+    return format_ordenes_pago(query, db)
 
 @app.get("/caja/cotizaciones")
 def listar_cotizaciones(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     query = db.query(models.OrdenTrabajo, models.Cliente).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
-    ).filter(models.OrdenTrabajo.tipo == "Cotizacion", models.OrdenTrabajo.estado == "Pendiente").all()
+    ).filter(models.OrdenTrabajo.tipo == "Cotizacion", models.OrdenTrabajo.estado == "Pendiente").order_by(models.OrdenTrabajo.id).all()
     
-    return format_ordenes_pago(query)
+    return format_ordenes_pago(query, db)
 
 @app.put("/ordenes/{orden_id}/facturacion")
 def actualizar_facturacion_orden(
@@ -463,7 +468,11 @@ def cobrar_orden(
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(get_current_user)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
-    if not orden: raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden.tipo != "Orden":
+        raise HTTPException(status_code=400, detail="Solo se pueden cobrar órdenes, convierta la cotización a caja primero")
+
     orden.estado = "Pagada"
     orden.metodo_pago = cobro.metodo_pago
     orden.referencia_pago = cobro.referencia_pago
@@ -489,9 +498,12 @@ def cobrar_orden(
 def listar_pagadas(db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
     query = db.query(models.OrdenTrabajo, models.Cliente).join(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
-    ).filter(models.OrdenTrabajo.estado.in_(["Pagada", "Anulada"])).all()
+    ).filter(
+        models.OrdenTrabajo.tipo == "Orden",
+        models.OrdenTrabajo.estado.in_(["Pagada", "Anulada"])
+    ).order_by(models.OrdenTrabajo.id).all()
     
-    return format_ordenes_pago(query)
+    return format_ordenes_pago(query, db)
 
 @app.get("/reportes/egresos", response_model=List[EgresoResponse])
 def listar_egresos(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
@@ -528,30 +540,48 @@ def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = D
         })
     return resultado
 
-def format_ordenes_pago(query):
-    return [{
-        "id": o.id,
-        "descripcion": o.descripcion,
-        "total": o.total,
-        "tipo": o.tipo,
-        "fecha": o.fecha,
-        "estado": o.estado,
-        "cliente_nombre": o.factura_nombre or c.nombre,
-        "cliente_rtn": o.factura_rtn or c.rtn or "Consumidor Final",
-        "cliente_dni": o.factura_dni or c.dni or "N/A",
-        "metodo_pago": o.metodo_pago,
-        "referencia_pago": o.referencia_pago,
-        "comprobante_pago": o.comprobante_pago
-    } for o, c in query]
+def format_ordenes_pago(query, db):
+    ordenes_formateadas = []
+    for o, c in query:
+        if o.tipo == "Orden":
+            numero_documento = db.query(models.OrdenTrabajo).filter(
+                models.OrdenTrabajo.tipo == "Orden",
+                models.OrdenTrabajo.id <= o.id
+            ).count()
+        else:
+            numero_documento = db.query(models.OrdenTrabajo).filter(
+                models.OrdenTrabajo.tipo == "Cotizacion",
+                models.OrdenTrabajo.id <= o.id
+            ).count()
+
+        ordenes_formateadas.append({
+            "id": o.id,
+            "descripcion": o.descripcion,
+            "total": o.total,
+            "tipo": o.tipo,
+            "fecha": o.fecha,
+            "estado": o.estado,
+            "cliente_nombre": o.factura_nombre or c.nombre,
+            "cliente_rtn": o.factura_rtn or c.rtn or "Consumidor Final",
+            "cliente_dni": o.factura_dni or c.dni or "N/A",
+            "metodo_pago": o.metodo_pago,
+            "referencia_pago": o.referencia_pago,
+            "comprobante_pago": o.comprobante_pago,
+            "documento_numero": numero_documento
+        })
+    return ordenes_formateadas
 
 # Admin/Cajero: Convertir Cotización a Orden (Enviar a Caja)
 @app.post("/caja/convertir-cotizacion/{orden_id}")
-def convertir_cotizacion(orden_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
+def convertir_cotizacion(orden_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_o_jefe_o_admin)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id, models.OrdenTrabajo.tipo == "Cotizacion").first()
     if not orden:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if orden.estado != "Pendiente":
+        raise HTTPException(status_code=400, detail="Solo se pueden convertir cotizaciones pendientes")
     
     orden.tipo = "Orden"
+    orden.estado = "Pendiente"
     orden.fecha = datetime.now(timezone.utc) # Actualizamos la fecha al momento de convertir
     db.commit()
     return {"message": "Cotización enviada a caja exitosamente"}
