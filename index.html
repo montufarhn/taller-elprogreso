@@ -773,6 +773,9 @@
                 telefono: document.getElementById('tel').value,
                 direccion: document.getElementById('dir').value
             };
+            if (tipo === 'Cotizacion') {
+                clienteData.identidad = '';
+            }
             if(!clienteData.nombre || itemsSeleccionados.length === 0) return alert("Faltan datos");
 
             // 1. Obtener ID del cliente (existente o nuevo)
@@ -1658,14 +1661,16 @@
                     ${cacheNegocio?.logo ? `<img src="${cacheNegocio.logo}" class="h-20 mx-auto mb-2 object-contain">` : ''}
                     <h3 class="text-xl font-bold">${cacheNegocio?.nombre || 'Taller Pro Auto'}</h3>
                     <p class="text-xs">${cacheNegocio?.direccion || ''}</p>
-                    <p class="text-xs">RTN: ${cacheNegocio?.rtn || ''} | TEL: ${cacheNegocio?.telefono || ''}</p>
+                    <p class="text-xs">TEL: ${cacheNegocio?.telefono || ''}</p>
                 </div>
 
+                ${!isCotizacion ? `
                 <div class="text-[10px] bg-gray-50 p-2 mb-4 border rounded">
                     <p><strong>CAI:</strong> ${cacheNegocio?.cai || ''}</p>
                     <p><strong>Rango Autorizado:</strong> ${cacheNegocio?.rango_desde || ''} AL ${cacheNegocio?.rango_hasta || ''}</p>
                     <p><strong>Fecha Límite Emisión:</strong> ${cacheNegocio ? new Date(cacheNegocio.fecha_limite).toLocaleDateString() : ''}</p>
                 </div>
+                ` : ''}
 
                 <div class="flex justify-between items-center mb-4 border-b pb-1 font-bold">
                     <span>${isCotizacion ? 'COTIZACIÓN' : 'FACTURA'} No.</span>
@@ -1674,7 +1679,7 @@
 
                 <div class="text-sm border-b pb-2">
                     <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
-                    <p><strong>${idLabel}:</strong> ${idValue}</p>
+                    ${!isCotizacion ? `<p><strong>${idLabel}:</strong> ${idValue}</p>` : ''}
                     <p><strong>Fecha:</strong> ${new Date(orden.fecha + 'Z').toLocaleString()}</p>
                 </div>
                 <div class="text-sm space-y-1">

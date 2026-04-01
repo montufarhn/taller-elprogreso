@@ -399,6 +399,10 @@ def crear_orden(
     
     rtn, dni = procesar_identidad(factura_identidad)
 
+    if tipo == "Cotizacion":
+        rtn = None
+        dni = None
+
     nueva_orden = models.OrdenTrabajo(
         cliente_id=cliente_id, 
         vehiculo_id=vehiculo.id if vehiculo else None,
@@ -586,6 +590,13 @@ def format_ordenes_pago(query, db):
                 models.OrdenTrabajo.id <= o.id
             ).count()
 
+        cliente_nombre = o.factura_nombre or c.nombre
+        cliente_rtn = "Consumidor Final"
+        cliente_dni = "N/A"
+        if o.tipo == "Orden":
+            cliente_rtn = o.factura_rtn or c.rtn or "Consumidor Final"
+            cliente_dni = o.factura_dni or c.dni or "N/A"
+
         ordenes_formateadas.append({
             "id": o.id,
             "descripcion": o.descripcion,
@@ -593,9 +604,9 @@ def format_ordenes_pago(query, db):
             "tipo": o.tipo,
             "fecha": o.fecha,
             "estado": o.estado,
-            "cliente_nombre": o.factura_nombre or c.nombre,
-            "cliente_rtn": o.factura_rtn or c.rtn or "Consumidor Final",
-            "cliente_dni": o.factura_dni or c.dni or "N/A",
+            "cliente_nombre": cliente_nombre,
+            "cliente_rtn": cliente_rtn,
+            "cliente_dni": cliente_dni,
             "metodo_pago": o.metodo_pago,
             "referencia_pago": o.referencia_pago,
             "comprobante_pago": o.comprobante_pago,
