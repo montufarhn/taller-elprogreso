@@ -113,18 +113,23 @@ class CobroRequest(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Crear usuario admin inicial si no existe
+    # Crear usuarios iniciales si no existen
     db = SessionLocal()
     try:
-        if not db.query(models.Usuario).filter(models.Usuario.username == "admin").first():
-            hashed_pw = pwd_context.hash("admin123")
-            admin = models.Usuario(username="admin", password_hash=hashed_pw, rol="admin")
-            db.add(admin)
-            # Crear también un jefe de pista y cajero para pruebas
-            db.add(models.Usuario(username="jefe", password_hash=pwd_context.hash("jefe123"), rol="jefe_pista"))
-            db.add(models.Usuario(username="caja", password_hash=pwd_context.hash("caja123"), rol="cajero"))
-            db.add(models.Usuario(username="taller", password_hash=pwd_context.hash("taller123"), rol="mecanico"))
-            db.commit()
+        default_users = [
+            {"username": "admin", "password": "admin123", "rol": "admin"},
+            {"username": "jefe", "password": "jefe123", "rol": "jefe_pista"},
+            {"username": "caja", "password": "caja123", "rol": "cajero"},
+            {"username": "taller", "password": "taller123", "rol": "mecanico"},
+        ]
+        for user_data in default_users:
+            if not db.query(models.Usuario).filter(models.Usuario.username == user_data["username"]).first():
+                db.add(models.Usuario(
+                    username=user_data["username"],
+                    password_hash=pwd_context.hash(user_data["password"]),
+                    rol=user_data["rol"]
+                ))
+        db.commit()
 
         # Crear configuración de negocio inicial si no existe
         if not db.query(models.NegocioConfig).first():
