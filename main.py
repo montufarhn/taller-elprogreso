@@ -44,8 +44,24 @@ class ClienteBase(BaseModel):
     telefono: str
     direccion: Optional[str] = None
 
-class ClienteResponse(ClienteBase):
+class ClienteResponse(BaseModel):
     id: int
+    nombre: str
+    rtn: Optional[str] = None
+    dni: Optional[str] = None
+    telefono: str
+    direccion: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class VehiculoResponse(BaseModel):
+    id: int
+    placa: str
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    anio: Optional[int] = None
+    color: Optional[str] = None
+    cliente_id: int
     class Config:
         from_attributes = True
 
@@ -187,10 +203,16 @@ def check_mecanico_or_admin(current_user: models.Usuario = Depends(get_current_u
 def procesar_identidad(identidad_str: Optional[str]):
     if not identidad_str:
         return None, None
+
     digits = "".join(filter(str.isdigit, identidad_str))
-    if len(digits) > 13:
-        return identidad_str, None
-    return None, identidad_str
+    if len(digits) == 13:
+        formatted_dni = f"{digits[0:4]}-{digits[4:8]}-{digits[8:13]}"
+        return None, formatted_dni
+    if len(digits) >= 14:
+        formatted_rtn = f"{digits[0:4]}-{digits[4:8]}-{digits[8:]}"
+        return formatted_rtn, None
+
+    return None, None
 
 @app.get("/")
 async def home():
@@ -321,6 +343,13 @@ def actualizar_negocio(negocio_data: NegocioBase, db: Session = Depends(get_db),
 @app.get("/clientes/", response_model=List[ClienteResponse])
 def listar_clientes(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     return db.query(models.Cliente).all()
+
+@app.get("/clientes/{cliente_id}/vehiculos", response_model=List[VehiculoResponse])
+def listar_vehiculos_cliente(cliente_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    return db.query(models.Vehiculo).filter(models.Vehiculo.cliente_id == cliente_id).all()
 
 # Endpoint para el Jefe de Pista: Registrar Cliente
 @app.post("/clientes/", response_model=ClienteResponse)

@@ -92,6 +92,9 @@
                             <input id="v-anio" type="number" placeholder="Año" class="w-1/2 p-2 border rounded text-sm">
                             <input id="v-color" type="text" placeholder="Color" class="w-1/2 p-2 border rounded text-sm">
                         </div>
+                        <select id="cliente-vehiculos" class="w-full p-2 border rounded mt-2 hidden" onchange="seleccionarVehiculoCliente()">
+                            <option value="">-- Seleccione un vehículo registrado --</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -494,6 +497,7 @@
         let cacheCatalogo = [];
         let itemsSeleccionados = [];
         let selectedClienteId = null;
+        let cacheVehiculosCliente = [];
         let cacheCobros = [];
         let cacheCotizaciones = [];
         let cachePagadas = [];
@@ -661,23 +665,37 @@
             const query = document.getElementById('nombre').value.toLowerCase();
             const list = document.getElementById('autocomplete-list');
             selectedClienteId = null; // Resetear ID si el usuario escribe manualmente
+            document.getElementById('cliente-vehiculos').classList.add('hidden');
             
             if (query.length < 2) {
                 list.classList.add('hidden');
                 return;
             }
 
-            // Buscar por nombre o por RTN
+            const exactMatches = cacheClientes.filter(c => 
+                c.nombre.toLowerCase() === query ||
+                (c.rtn && c.rtn.toLowerCase() === query) ||
+                (c.dni && c.dni.toLowerCase() === query)
+            );
+
+            if (exactMatches.length === 1) {
+                seleccionarClienteAutoById(exactMatches[0].id);
+                list.classList.add('hidden');
+                return;
+            }
+
+            // Buscar por nombre o por RTN/DNI parcial
             const filtrados = cacheClientes.filter(c => 
                 c.nombre.toLowerCase().includes(query) || 
-                (c.rtn && c.rtn.includes(query))
+                (c.rtn && c.rtn.toLowerCase().includes(query)) ||
+                (c.dni && c.dni.toLowerCase().includes(query))
             );
             
             if (filtrados.length > 0) {
                 list.innerHTML = filtrados.map(c => `
                     <div onclick="seleccionarClienteAutoById(${c.id})" 
                          class="p-2 hover:bg-gray-100 cursor-pointer border-b text-sm">
-                        <strong>${c.nombre}</strong> <span class="text-gray-500 text-xs">(${c.rtn || 'Sin RTN'})</span>
+                        <strong>${c.nombre}</strong> <span class="text-gray-500 text-xs">(${c.rtn || c.dni || 'Sin Identidad'})</span>
                     </div>
                 `).join('');
                 list.classList.remove('hidden');
@@ -701,6 +719,7 @@
             localStorage.setItem('draft_identidad', cliente.rtn || cliente.dni || '');
 
             document.getElementById('autocomplete-list').classList.add('hidden');
+            cargarVehiculosCliente(cliente.id);
         }
 
         async function cargarCatalogo() {
@@ -713,6 +732,50 @@
                 cacheCatalogo.map(i => `<option value="${i.id}">${i.nombre} - Lps. ${i.precio}</option>`).join('');
             
             if(currentUser.rol === 'admin') renderCatalogoAdmin();
+        }
+
+        function cargarVehiculosCliente(clienteId) {
+            const select = document.getElementById('cliente-vehiculos');
+            select.classList.add('hidden');
+            select.innerHTML = '<option value="">-- Seleccione un vehículo registrado --</option>';
+            cacheVehiculosCliente = [];
+
+            if (!clienteId) return;
+            apiRequest(`${API_BASE_URL}/clientes/${clienteId}/vehiculos`, { headers: getHeaders() })
+                .then(resp => resp && resp.ok ? resp.json() : null)
+                .then(vehiculos => {
+                    if (!vehiculos || vehiculos.length === 0) return;
+                    cacheVehiculosCliente = vehiculos;
+                    vehiculos.forEach(v => {
+                        const option = document.createElement('option');
+                        option.value = v.id;
+                        option.textContent = `${v.placa || 'Sin placa'} ${v.marca || ''} ${v.modelo || ''}`.trim();
+                        option.dataset.placa = v.placa || '';
+                        option.dataset.marca = v.marca || '';
+                        option.dataset.modelo = v.modelo || '';
+                        option.dataset.anio = v.anio || '';
+                        option.dataset.color = v.color || '';
+                        select.appendChild(option);
+                    });
+                    select.classList.remove('hidden');
+                    if (vehiculos.length === 1) {
+                        select.selectedIndex = 1;
+                        seleccionarVehiculoCliente();
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function seleccionarVehiculoCliente() {
+            const select = document.getElementById('cliente-vehiculos');
+            const selected = select.options[select.selectedIndex];
+            if (!selected || !selected.value) return;
+
+            document.getElementById('v-placa').value = selected.dataset.placa || '';
+            document.getElementById('v-marca').value = selected.dataset.marca || '';
+            document.getElementById('v-modelo').value = selected.dataset.modelo || '';
+            document.getElementById('v-anio').value = selected.dataset.anio || '';
+            document.getElementById('v-color').value = selected.dataset.color || '';
         }
 
         function agregarItemOrden() {
@@ -780,7 +843,21 @@
 
             // 1. Obtener ID del cliente (existente o nuevo)
             let clienteId = selectedClienteId;
-            
+            if (!clienteId) {
+                const exactMatch = cacheClientes.find(c => 
+                    c.nombre.toLowerCase() === clienteData.nombre.toLowerCase() || 
+                    (clienteData.identidad && (c.rtn === clienteData.identidad || c.dni === clienteData.identidad))
+                );
+                if (exactMatch) {
+                    clienteId = exactMatch.id;
+                    selectedClienteId = exactMatch.id;
+                    cargarVehiculosCliente(clienteId);
+                    document.getElementById('identidad').value = exactMatch.rtn || exactMatch.dni || '';
+                    document.getElementById('tel').value = exactMatch.telefono || '';
+                    document.getElementById('dir').value = exactMatch.direccion || '';
+                }
+            }
+
             if (!clienteId) {
                 const respCli = await apiRequest(`${API_BASE_URL}/clientes/`, {
                     method: 'POST',
@@ -1126,6 +1203,17 @@
                 alert("Cliente actualizado correctamente");
                 document.getElementById('modal-cliente').classList.add('hidden');
                 cargarClientesFull();
+                cargarDocumentosRelacionados();
+
+                if (selectedClienteId && selectedClienteId.toString() === id.toString()) {
+                    document.getElementById('nombre').value = data.nombre;
+                    document.getElementById('identidad').value = data.identidad || '';
+                    document.getElementById('tel').value = data.telefono || '';
+                    document.getElementById('dir').value = data.direccion || '';
+                    localStorage.setItem('draft_nombre', data.nombre);
+                    localStorage.setItem('draft_identidad', data.identidad || '');
+                    cargarVehiculosCliente(selectedClienteId);
+                }
             } else if (resp) {
                 const err = await resp.json();
                 alert("Error al actualizar: " + err.detail);
