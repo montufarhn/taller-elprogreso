@@ -19,9 +19,10 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 # Esta parte es CRUCIAL para que SQLite respete los CASCADE y SET NULL
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
