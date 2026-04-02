@@ -537,6 +537,13 @@
         let cachePagadas = [];
         let cacheNegocio = null;
         let currentEditingOrderId = null;
+        const IVA_RATE = 0.15;
+
+        function calcularImpuesto(total) {
+            const base = total / (1 + IVA_RATE);
+            const iva = total - base;
+            return { base, iva, total };
+        }
 
         // Al cargar la página, verificar si hay sesión guardada
         window.onload = () => {
@@ -976,22 +983,26 @@
             
             const requiereTaller = itemsSeleccionados.some(i => i.tipo === 'Mano de Obra');
             const mecanicoId = document.getElementById('select-mecanico-asignado').value;
+            const placa = document.getElementById('v-placa').value;
+            const marca = document.getElementById('v-marca').value;
+            const modelo = document.getElementById('v-modelo').value;
+            const anio = document.getElementById('v-anio').value;
+            const color = document.getElementById('v-color').value;
 
-            const params = new URLSearchParams({
-                cliente_id: clienteId,
-                descripcion: desc,
-                total: total,
-                factura_nombre: clienteData.nombre,
-                factura_identidad: clienteData.identidad,
-                tipo: tipo,
-                placa: document.getElementById('v-placa').value,
-                marca: document.getElementById('v-marca').value,
-                modelo: document.getElementById('v-modelo').value,
-                anio: document.getElementById('v-anio').value || 0,
-                color: document.getElementById('v-color').value,
-                requiere_taller: requiereTaller,
-                mecanico_id: mecanicoId || ''
-            });
+            const params = new URLSearchParams();
+            params.append('cliente_id', clienteId);
+            params.append('descripcion', desc);
+            params.append('total', total);
+            params.append('factura_nombre', clienteData.nombre);
+            if (clienteData.identidad) params.append('factura_identidad', clienteData.identidad);
+            params.append('tipo', tipo);
+            if (placa) params.append('placa', placa);
+            if (marca) params.append('marca', marca);
+            if (modelo) params.append('modelo', modelo);
+            if (anio) params.append('anio', anio);
+            if (color) params.append('color', color);
+            params.append('requiere_taller', requiereTaller);
+            if (mecanicoId) params.append('mecanico_id', mecanicoId);
 
             const respOrd = await apiRequest(`${API_BASE_URL}/ordenes/?${params.toString()}`, {
                 method: 'POST',
@@ -1003,7 +1014,7 @@
             if(respOrd.ok) {
                 const ordenResult = await respOrd.json();
                 mostrarAlerta("Éxito", `${tipo} guardada exitosamente`, "info");
-                
+
                 // Limpiar formulario y borradores
                 itemsSeleccionados = [];
                 renderItemsOrden();
@@ -1020,7 +1031,17 @@
 
                 // Mostrar el documento (Cotización o Factura) inmediatamente para impresión
                 mostrarFactura(ordenResult.id, [ordenResult]);
+                return;
             }
+
+            let errorMessage = "Error desconocido al crear la orden.";
+            try {
+                const errorData = await respOrd.json();
+                errorMessage = errorData.detail || errorData.message || errorMessage;
+            } catch (e) {
+                console.error("Error parseando respuesta de orden", e);
+            }
+            mostrarAlerta("Error al Crear Orden", errorMessage, "error");
         }
 
         async function crearItemCatalogo() {
@@ -1824,6 +1845,7 @@
             document.getElementById('btn-imprimir-copia').classList.toggle('hidden', !isFinalized && !isCotizacion);
             document.querySelector('#modal-factura h2').innerText = isCotizacion ? 'Detalle de Cotización' : (isAnulada ? 'Factura Anulada' : (isPaid ? 'Consulta de Factura' : 'Detalle de Cobro'));
 
+
             // Reset campos de pago
             document.getElementById('select-metodo').value = 'Efectivo';
             document.getElementById('input-referencia').value = '';
@@ -1861,14 +1883,20 @@
                 return { cant: 1, nombre: row, precio: 0 }; // Texto simple sin formato
             });
 
-            // Lógica para detectar etiqueta dinámica RTN vs DNI en la factura
+            const ordenTotal = parseFloat(orden.total) || 0;
+            const { base, iva } = calcularImpuesto(ordenTotal);
+
+            // Lógica para identificar la identidad del cliente en factura o cotización
             let idLabel = "RTN";
             let idValue = orden.cliente_rtn;
-            if (orden.cliente_rtn === 'Consumidor Final' && orden.cliente_dni !== 'N/A') {
-                idLabel = "DNI";
-                idValue = orden.cliente_dni;
-            } else if (orden.cliente_rtn === 'Consumidor Final' && orden.cliente_dni === 'N/A') {
-                idValue = "Consumidor Final";
+            if (orden.cliente_rtn === 'Consumidor Final' || !orden.cliente_rtn) {
+                if (orden.cliente_dni && orden.cliente_dni !== 'N/A') {
+                    idLabel = "DNI";
+                    idValue = orden.cliente_dni;
+                } else {
+                    idLabel = "Identidad";
+                    idValue = "Consumidor Final";
+                }
             }
 
             const content = document.getElementById('factura-content');
@@ -1898,7 +1926,7 @@
 
                 <div class="text-sm border-b pb-2">
                     <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
-                    ${!isCotizacion ? `<p><strong>${idLabel}:</strong> ${idValue}</p>` : ''}
+                    <p><strong>${idLabel}:</strong> ${idValue}</p>
                     <p><strong>Fecha:</strong> ${new Date(orden.fecha + 'Z').toLocaleString()}</p>
                 </div>
                 <div class="text-sm space-y-1">
@@ -1909,9 +1937,19 @@
                         </div>
                     `).join('')}
                 </div>
+                <div class="mt-3 text-sm space-y-1 border-t pt-2">
+                    <div class="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>Lps. ${base.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Impuesto 15%:</span>
+                        <span>Lps. ${iva.toFixed(2)}</span>
+                    </div>
+                </div>
                 <div class="flex justify-between font-bold text-xl border-t pt-2 text-blue-800">
                     <span>TOTAL:</span>
-                    <span>Lps. ${orden.total.toFixed(2)}</span>
+                    <span>Lps. ${ordenTotal.toFixed(2)}</span>
                 </div>
                 ${orden.comprobante_pago ? `
                     <div class="mt-4 p-2 border rounded bg-gray-50 print:hidden border-dashed">
