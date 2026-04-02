@@ -199,11 +199,16 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Rango Autorizado (Desde)</label>
-                    <input id="biz-desde" type="text" class="w-full p-2 border rounded">
+                    <input id="biz-desde" type="text" class="w-full p-2 border rounded" placeholder="Ej: 000-001-01-00000001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Número inicial de factura</label>
+                    <input id="biz-numero-inicio" type="number" min="1" class="w-full p-2 border rounded" placeholder="Ej: 1">
+                    <p class="text-xs text-gray-500 mt-1">Si completa este campo se actualizará automáticamente el sufijo de rango autorizado "Desde".</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Rango Autorizado (Hasta)</label>
-                    <input id="biz-hasta" type="text" class="w-full p-2 border rounded">
+                    <input id="biz-hasta" type="text" class="w-full p-2 border rounded" placeholder="Ej: 000-001-01-00000999">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Fecha Límite de Emisión</label>
@@ -1190,6 +1195,30 @@
             renderClientesTable(cacheClientes);
         }
 
+        function obtenerNumeroInicialDesdeRango(rango) {
+            if (!rango) return 1;
+            const match = rango.toString().trim().match(/(\d+)$/);
+            if (!match) return 1;
+            const numero = parseInt(match[1], 10);
+            return (!isNaN(numero) && numero > 0) ? numero : 1;
+        }
+
+        function construirRangoDesdeConNumero(rango, numero) {
+            if (!numero || isNaN(numero) || numero <= 0) return rango || '';
+            const numeroStr = numero.toString();
+
+            if (!rango) return numeroStr;
+            const match = rango.toString().trim().match(/(\d+)$/);
+            if (!match) {
+                // Si no hay sufijo reconocible, agregamos con guión
+                return `${rango}-${numeroStr}`;
+            }
+
+            const longitudAnterior = match[1].length;
+            const numeroPadding = numeroStr.padStart(longitudAnterior, '0');
+            return `${rango.slice(0, match.index)}${numeroPadding}`;
+        }
+
         async function cargarDatosNegocio() {
             const resp = await apiRequest(`${API_BASE_URL}/negocio/`, { headers: getHeaders() });
             if (!resp) return;
@@ -1214,6 +1243,7 @@
                 document.getElementById('biz-cai').value = cacheNegocio.cai;
                 document.getElementById('biz-desde').value = cacheNegocio.rango_desde;
                 document.getElementById('biz-hasta').value = cacheNegocio.rango_hasta;
+                document.getElementById('biz-numero-inicio').value = cacheNegocio.numero_inicio_factura || 1;
                 document.getElementById('biz-limite').value = cacheNegocio.fecha_limite.split('T')[0];
             }
         }
@@ -1230,6 +1260,8 @@
                 });
             }
 
+            const numeroInicio = parseInt(document.getElementById('biz-numero-inicio').value, 10);
+
             const data = {
                 nombre: document.getElementById('biz-nombre').value,
                 rtn: document.getElementById('biz-rtn').value,
@@ -1239,6 +1271,7 @@
                 rango_desde: document.getElementById('biz-desde').value,
                 rango_hasta: document.getElementById('biz-hasta').value,
                 fecha_limite: document.getElementById('biz-limite').value,
+                numero_inicio_factura: (!isNaN(numeroInicio) && numeroInicio > 0) ? numeroInicio : 1,
                 logo: logoBase64
             };
 

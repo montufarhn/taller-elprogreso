@@ -93,4 +93,5 @@ class NegocioConfig(Base):
     rango_desde = Column(String)
     rango_hasta = Column(String)
     fecha_limite = Column(DateTime)
+    numero_inicio_factura = Column(Integer, default=1)
     logo = Column(String, nullable=True)

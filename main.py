@@ -97,6 +97,7 @@ class NegocioBase(BaseModel):
     rango_desde: str
     rango_hasta: str
     fecha_limite: datetime
+    numero_inicio_factura: int = 1
     logo: Optional[str] = None
 
 class NegocioResponse(NegocioBase):
@@ -143,6 +144,7 @@ async def lifespan(app: FastAPI):
                 cai="XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XX",
                 rango_desde="000-001-01-00000001",
                 rango_hasta="000-001-01-00000999",
+                numero_inicio_factura=1,
                 fecha_limite=datetime.now(timezone.utc) + timedelta(days=365)
             )
             db.add(config_inicial)
@@ -482,6 +484,20 @@ def crear_orden(
     db.add(nueva_orden)
     db.commit()
     db.refresh(nueva_orden)
+
+    negocio_config = db.query(models.NegocioConfig).first()
+    if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
+        numero_inicial = negocio_config.numero_inicio_factura
+    else:
+        numero_inicial = obtener_numero_inicial_desde_rango(negocio_config.rango_desde if negocio_config else None)
+
+    documentos_anteriores = db.query(models.OrdenTrabajo).filter(
+        models.OrdenTrabajo.tipo == tipo,
+        models.OrdenTrabajo.id <= nueva_orden.id
+    ).count()
+
+    documento_numero = numero_inicial + documentos_anteriores - 1
+
     return {
         "id": nueva_orden.id,
         "descripcion": nueva_orden.descripcion,
@@ -491,7 +507,8 @@ def crear_orden(
         "estado": nueva_orden.estado,
         "cliente_nombre": nueva_orden.factura_nombre,
         "cliente_rtn": nueva_orden.factura_rtn or "Consumidor Final",
-        "cliente_dni": nueva_orden.factura_dni or "N/A"
+        "cliente_dni": nueva_orden.factura_dni or "N/A",
+        "documento_numero": documento_numero
     }
 
 # Cajero: Ver Ordenes Pendientes de Cobro
@@ -641,19 +658,42 @@ def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = D
 
     return resultado
 
+
+def obtener_numero_inicial_desde_rango(rango_desde: Optional[str]) -> int:
+    if not rango_desde:
+        return 1
+    import re
+    match = re.search(r"(\d+)$", rango_desde.strip())
+    if not match:
+        return 1
+    try:
+        numero = int(match.group(1))
+        return numero if numero > 0 else 1
+    except ValueError:
+        return 1
+
+
 def format_ordenes_pago(query, db):
     ordenes_formateadas = []
+    negocio_config = db.query(models.NegocioConfig).first()
+    if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
+        numero_inicial = negocio_config.numero_inicio_factura
+    else:
+        numero_inicial = obtener_numero_inicial_desde_rango(negocio_config.rango_desde if negocio_config else None)
+
     for o, c in query:
         if o.tipo == "Orden":
-            numero_documento = db.query(models.OrdenTrabajo).filter(
+            documentos_anteriores = db.query(models.OrdenTrabajo).filter(
                 models.OrdenTrabajo.tipo == "Orden",
                 models.OrdenTrabajo.id <= o.id
             ).count()
         else:
-            numero_documento = db.query(models.OrdenTrabajo).filter(
+            documentos_anteriores = db.query(models.OrdenTrabajo).filter(
                 models.OrdenTrabajo.tipo == "Cotizacion",
                 models.OrdenTrabajo.id <= o.id
             ).count()
+
+        numero_documento = numero_inicial + documentos_anteriores - 1
 
         cliente_nombre = o.factura_nombre or (c.nombre if c else "Cliente Eliminado")
         cliente_rtn = "Consumidor Final"
