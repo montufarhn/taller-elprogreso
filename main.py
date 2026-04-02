@@ -228,6 +228,11 @@ async def home():
 def listar_usuarios(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     return db.query(models.Usuario).all()
 
+# Nuevo endpoint para obtener solo mecánicos
+@app.get("/usuarios/mecanicos", response_model=List[UserResponse])
+def listar_mecanicos(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    return db.query(models.Usuario).filter(models.Usuario.rol == "mecanico", models.Usuario.activo == True).all()
+
 @app.post("/usuarios/", response_model=UserResponse)
 def crear_usuario(user: UserCreate, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
     db_user = db.query(models.Usuario).filter(models.Usuario.username == user.username).first()
@@ -426,6 +431,7 @@ def crear_orden(
     anio: Optional[int] = None,
     color: Optional[str] = None,
     requiere_taller: bool = False,
+    mecanico_id: Optional[int] = None,
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(get_current_user)
 ):
@@ -454,7 +460,8 @@ def crear_orden(
         descripcion=descripcion, 
         total=total, 
         tipo=tipo,
-        requiere_taller=requiere_taller
+        requiere_taller=requiere_taller,
+        mecanico_id=mecanico_id
     )
     db.add(nueva_orden)
     db.commit()
@@ -695,7 +702,7 @@ def asignar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: 
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
-    if orden.mecanico_id:
+    if orden.mecanico_id and orden.mecanico_id != current_user.id:
         raise HTTPException(status_code=400, detail="Este trabajo ya fue tomado por otro mecánico")
 
     orden.mecanico_id = current_user.id

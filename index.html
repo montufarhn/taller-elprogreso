@@ -92,6 +92,10 @@
                             <input id="v-anio" type="number" placeholder="Año" class="w-1/2 p-2 border rounded text-sm">
                             <input id="v-color" type="text" placeholder="Color" class="w-1/2 p-2 border rounded text-sm">
                         </div>
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-blue-600 uppercase ml-1">Asignar Mecánico de Preferencia</label>
+                            <select id="select-mecanico-asignado" class="w-full p-2 border rounded text-sm bg-white"></select>
+                        </div>
                         <select id="cliente-vehiculos" class="w-full p-2 border rounded mt-2 hidden" onchange="seleccionarVehiculoCliente()">
                             <option value="">-- Seleccione un vehículo registrado --</option>
                         </select>
@@ -491,10 +495,40 @@
         </div>
     </div>
 
+    <!-- Modal de Alerta Genérico (Información/Error) -->
+    <div id="modal-alerta" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div id="alerta-icono" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+            <h2 id="alerta-titulo" class="text-xl font-bold text-gray-800 mb-2"></h2>
+            <p id="alerta-mensaje" class="text-gray-600 mb-6"></p>
+            <button onclick="document.getElementById('modal-alerta').classList.add('hidden')" 
+                class="w-full p-2 rounded font-bold text-white transition-colors" id="alerta-btn">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación Genérico -->
+    <div id="modal-confirm" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h2 id="confirm-titulo" class="text-xl font-bold text-gray-800 mb-2">¿Está seguro?</h2>
+            <p id="confirm-mensaje" class="text-gray-600 mb-6"></p>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modal-confirm').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold">Cancelar</button>
+                <button id="confirm-btn-proceder" class="flex-1 bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Proceder</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let cacheClientes = [];
         let cacheCatalogo = [];
+        let cacheMecanicos = [];
         let itemsSeleccionados = [];
         let selectedClienteId = null;
         let cacheVehiculosCliente = [];
@@ -553,7 +587,7 @@
                 localStorage.setItem('taller_session', JSON.stringify(currentUser));
                 showDashboard();
             } else {
-                alert("Usuario o contraseña incorrectos");
+                mostrarAlerta("Error de Acceso", "Usuario o contraseña incorrectos", "error");
             }
         }
 
@@ -565,6 +599,7 @@
             if(tabId === 'tab-reportes') cargarBalances();
             if(tabId === 'tab-rendimiento') cargarRendimiento();
             if(tabId === 'tab-documentos') cargarDocumentosRelacionados();
+            if(tabId === 'tab-documentos' && (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista')) cargarMecanicos();
             if(tabId === 'tab-taller') cargarTaller();
             if(tabId === 'tab-usuarios' && currentUser.rol === 'admin') cargarUsuarios();
             if(tabId === 'tab-negocio' && currentUser.rol === 'admin') cargarDatosNegocio();
@@ -624,6 +659,44 @@
             cargarDatosNegocio();
         }
 
+        function mostrarAlerta(titulo, mensaje, tipo = 'info') {
+            const modal = document.getElementById('modal-alerta');
+            const icono = document.getElementById('alerta-icono');
+            const tituloEl = document.getElementById('alerta-titulo');
+            const mensajeEl = document.getElementById('alerta-mensaje');
+            const btn = document.getElementById('alerta-btn');
+
+            tituloEl.innerText = titulo;
+            mensajeEl.innerText = mensaje;
+
+            if (tipo === 'error') {
+                icono.className = "w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4";
+                icono.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                btn.className = "w-full p-2 rounded font-bold text-white bg-red-600 hover:bg-red-700";
+            } else {
+                icono.className = "w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4";
+                icono.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                btn.className = "w-full p-2 rounded font-bold text-white bg-blue-600 hover:bg-blue-700";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function mostrarConfirmacion(titulo, mensaje, onConfirm) {
+            const modal = document.getElementById('modal-confirm');
+            document.getElementById('confirm-titulo').innerText = titulo;
+            document.getElementById('confirm-mensaje').innerText = mensaje;
+            const btn = document.getElementById('confirm-btn-proceder');
+            
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.onclick = () => {
+                modal.classList.add('hidden');
+                onConfirm();
+            };
+            modal.classList.remove('hidden');
+        }
+
         function cargarDocumentosRelacionados() {
             if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') cargarCobros();
             if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico') cargarTaller();
@@ -647,8 +720,8 @@
             } catch (error) {
                 // Si fetch falla es porque el servidor no está funcionando o no hay red
                 console.error("Error de comunicación con el servidor:", error);
-                alert("El servidor no responde. Serás redirigido al login por seguridad.");
-                logout();
+                mostrarAlerta("Error de Conexión", "El servidor no responde. Por seguridad, la sesión se cerrará.", "error");
+                setTimeout(logout, 3000);
                 return null;
             }
         }
@@ -732,6 +805,17 @@
                 cacheCatalogo.map(i => `<option value="${i.id}">${i.nombre} - Lps. ${i.precio}</option>`).join('');
             
             if(currentUser.rol === 'admin') renderCatalogoAdmin();
+        }
+
+        async function cargarMecanicos() {
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/mecanicos`, { headers: getHeaders() });
+            if (!resp) return;
+            cacheMecanicos = await resp.json();
+            const select = document.getElementById('select-mecanico-asignado');
+            if (select) {
+                select.innerHTML = '<option value="">-- Sin mecánico preferido (Cualquiera) --</option>' + 
+                    cacheMecanicos.map(m => `<option value="${m.id}">${m.username.toUpperCase()}</option>`).join('');
+            }
         }
 
         function cargarVehiculosCliente(clienteId) {
@@ -891,6 +975,7 @@
             const total = parseFloat(document.getElementById('total-orden').innerText);
             
             const requiereTaller = itemsSeleccionados.some(i => i.tipo === 'Mano de Obra');
+            const mecanicoId = document.getElementById('select-mecanico-asignado').value;
 
             const params = new URLSearchParams({
                 cliente_id: clienteId,
@@ -904,7 +989,8 @@
                 modelo: document.getElementById('v-modelo').value,
                 anio: document.getElementById('v-anio').value || 0,
                 color: document.getElementById('v-color').value,
-                requiere_taller: requiereTaller
+                requiere_taller: requiereTaller,
+                mecanico_id: mecanicoId || ''
             });
 
             const respOrd = await apiRequest(`${API_BASE_URL}/ordenes/?${params.toString()}`, {
@@ -1257,17 +1343,29 @@
         }
 
         async function eliminarCliente(id) {
-            if(!confirm("¿Está seguro de eliminar este cliente? Esto podría afectar historiales.")) return;
-            const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
-                method: 'DELETE',
-                headers: getHeaders()
-            });
-            if (!resp) return;
+            mostrarConfirmacion(
+                "¿Eliminar Cliente?", 
+                "Esta acción podría afectar historiales de facturación. ¿Desea continuar?", 
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
+                        method: 'DELETE',
+                        headers: getHeaders()
+                    });
+                    if (!resp) return;
 
-            if(resp.ok) {
-                alert("Cliente eliminado");
-                cargarClientesFull();
-            }
+                    if(resp.ok) {
+                        mostrarAlerta("Éxito", "Cliente eliminado correctamente", "info");
+                        cargarClientesFull();
+                    } else {
+                        try {
+                            const err = await resp.json();
+                            mostrarAlerta("No se puede eliminar", err.detail || "Error desconocido", "error");
+                        } catch (e) {
+                            mostrarAlerta("Error", "Ocurrió un error inesperado al intentar eliminar.", "error");
+                        }
+                    }
+                }
+            );
         }
 
         async function cargarUsuarios() {
@@ -1534,7 +1632,9 @@
                         ${!o.mecanico_id 
                             ? `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Tomar Trabajo</button>`
                             : (o.mecanico_id === currentUser.user_id 
-                                ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-700">Trabajo Completado</button>`
+                                ? (o.inicio_trabajo 
+                                    ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-700">Trabajo Completado</button>`
+                                    : `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700">Iniciar Mi Trabajo</button>`)
                                 : `<span class="text-xs font-bold text-gray-400 italic">En proceso por otro...</span>`)
                         }
                     </div>
