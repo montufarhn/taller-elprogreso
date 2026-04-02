@@ -467,7 +467,7 @@ def crear_orden(
 @app.get("/caja/pendientes")
 def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     # Unimos con la tabla de clientes para obtener nombre y RTN para la búsqueda
-    query = db.query(models.OrdenTrabajo, models.Cliente).join(
+    query = db.query(models.OrdenTrabajo, models.Cliente).outerjoin(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(models.OrdenTrabajo.estado == "Pendiente", models.OrdenTrabajo.tipo == "Orden").order_by(models.OrdenTrabajo.id).all()
     
@@ -475,7 +475,7 @@ def listar_pendientes(db: Session = Depends(get_db), current_user: models.Usuari
 
 @app.get("/caja/cotizaciones")
 def listar_cotizaciones(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
-    query = db.query(models.OrdenTrabajo, models.Cliente).join(
+    query = db.query(models.OrdenTrabajo, models.Cliente).outerjoin(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(models.OrdenTrabajo.tipo == "Cotizacion", models.OrdenTrabajo.estado == "Pendiente").order_by(models.OrdenTrabajo.id).all()
     
@@ -534,7 +534,7 @@ def cobrar_orden(
 # Admin: Listar Facturas Pagadas
 @app.get("/caja/pagadas")
 def listar_pagadas(db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
-    query = db.query(models.OrdenTrabajo, models.Cliente).join(
+    query = db.query(models.OrdenTrabajo, models.Cliente).outerjoin(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(
         models.OrdenTrabajo.tipo == "Orden",
@@ -624,12 +624,12 @@ def format_ordenes_pago(query, db):
                 models.OrdenTrabajo.id <= o.id
             ).count()
 
-        cliente_nombre = o.factura_nombre or c.nombre
+        cliente_nombre = o.factura_nombre or (c.nombre if c else "Cliente Eliminado")
         cliente_rtn = "Consumidor Final"
         cliente_dni = "N/A"
         if o.tipo == "Orden":
-            cliente_rtn = o.factura_rtn or c.rtn or "Consumidor Final"
-            cliente_dni = o.factura_dni or c.dni or "N/A"
+            cliente_rtn = o.factura_rtn or (c.rtn if c else "Consumidor Final")
+            cliente_dni = o.factura_dni or (c.dni if c else "N/A")
 
         ordenes_formateadas.append({
             "id": o.id,
@@ -713,7 +713,7 @@ def completar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user
 # Pantalla Taller: Listar Trabajos Pendientes
 @app.get("/taller/pendientes")
 def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
-    query = db.query(models.OrdenTrabajo, models.Cliente, models.Vehiculo).join(
+    query = db.query(models.OrdenTrabajo, models.Cliente, models.Vehiculo).outerjoin(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).outerjoin(
         models.Vehiculo, models.OrdenTrabajo.vehiculo_id == models.Vehiculo.id

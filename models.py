@@ -12,6 +12,7 @@ class Usuario(Base):
     password_hash = Column(String)
     rol = Column(String)  # 'admin', 'cajero', 'jefe_pista'
     activo = Column(Boolean, default=True)
+    ordenes_asignadas = relationship("OrdenTrabajo", backref="mecanico", passive_deletes=True)
 
 class Cliente(Base):
     __tablename__ = "clientes"
@@ -21,7 +22,8 @@ class Cliente(Base):
     dni = Column(String, nullable=True)
     telefono = Column(String)
     direccion = Column(String, nullable=True)
-    vehiculos = relationship("Vehiculo", back_populates="dueno")
+    vehiculos = relationship("Vehiculo", back_populates="dueno", cascade="all, delete-orphan")
+    ordenes = relationship("OrdenTrabajo", back_populates="cliente")
 
 class Vehiculo(Base):
     __tablename__ = "vehiculos"
@@ -31,7 +33,7 @@ class Vehiculo(Base):
     modelo = Column(String)
     anio = Column(Integer, nullable=True)
     color = Column(String, nullable=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id"))
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"))
     dueno = relationship("Cliente", back_populates="vehiculos")
 
 class Cotizacion(Base):
@@ -45,8 +47,8 @@ class Cotizacion(Base):
 class OrdenTrabajo(Base):
     __tablename__ = "ordenes_trabajo"
     id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id"))
-    vehiculo_id = Column(Integer, ForeignKey("vehiculos.id"))
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True)
+    vehiculo_id = Column(Integer, ForeignKey("vehiculos.id", ondelete="SET NULL"), nullable=True)
     descripcion = Column(String)
     total = Column(Float, default=0.0)
     tipo = Column(String, default="Orden") # 'Orden' o 'Cotizacion'
@@ -59,10 +61,11 @@ class OrdenTrabajo(Base):
     comprobante_pago = Column(String, nullable=True) # Almacena imagen en Base64
     taller_completado = Column(Boolean, default=False)
     requiere_taller = Column(Boolean, default=False)
-    mecanico_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    mecanico_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     inicio_trabajo = Column(DateTime, nullable=True)
     fin_trabajo = Column(DateTime, nullable=True)
     fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    cliente = relationship("Cliente", back_populates="ordenes")
 
 class ItemCatalogo(Base):
     __tablename__ = "catalogo"

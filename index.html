@@ -1311,6 +1311,22 @@
             }
         }
 
+        async function eliminarUsuario(id) {
+            if(!confirm("¿Está seguro de eliminar este usuario?")) return;
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, { 
+                method: 'DELETE', 
+                headers: getHeaders() 
+            });
+            if (!resp) return;
+            if(resp.ok) {
+                alert("Usuario eliminado correctamente");
+                cargarUsuarios();
+            } else {
+                const err = await resp.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
         function editarUsuario(id, username, rol) {
             document.getElementById('edit-user-id').value = id;
             document.getElementById('edit-user-name').value = username;
