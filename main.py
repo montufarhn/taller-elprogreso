@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+import sys # Added for PyInstaller path handling
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, get_db
@@ -15,6 +16,7 @@ import models
 
 # Configuración de Seguridad
 SECRET_KEY = "taller_pro_auto_honduras_2024"
+# En un entorno de producción, esta clave debería cargarse desde una variable de entorno.
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -219,9 +221,23 @@ def procesar_identidad(identidad_str: Optional[str]):
 
     return None, None
 
+# Determine the base path for bundled files or installed files
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        # Running as a PyInstaller bundle, files are in the temporary extraction folder
+        return sys._MEIPASS
+    else:
+        # Running as a script
+        return os.path.dirname(os.path.abspath(__file__))
+
+BASE_PATH = get_base_path()
+
 @app.get("/")
 async def home():
-    return FileResponse("index.html")
+    index_path = os.path.join(BASE_PATH, "index.html")
+    if not os.path.exists(index_path):
+        raise HTTPException(status_code=404, detail="index.html not found")
+    return FileResponse(index_path)
 
 # --- Gestión de Usuarios (Solo Admin) ---
 @app.get("/usuarios/", response_model=List[UserResponse])

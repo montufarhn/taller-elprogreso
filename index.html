@@ -923,7 +923,7 @@
             if (tipo === 'Cotizacion') {
                 clienteData.identidad = '';
             }
-            if(!clienteData.nombre || itemsSeleccionados.length === 0) return alert("Faltan datos");
+            if(!clienteData.nombre || itemsSeleccionados.length === 0) return mostrarAlerta("Datos Incompletos", "Por favor, ingrese el nombre del cliente y al menos un servicio/producto.", "error");
 
             // 1. Obtener ID del cliente (existente o nuevo)
             let clienteId = selectedClienteId;
@@ -956,10 +956,10 @@
                 } else {
                     try {
                         const err = await respCli.json();
-                        return alert("Error al procesar cliente: " + err.detail);
+                        return mostrarAlerta("Error al Registrar Cliente", err.detail || "Error desconocido al registrar el cliente.", "error");
                     } catch (e) {
                         console.error("Error servidor:", await respCli.text());
-                        return alert("Error al registrar cliente. Verifique que los datos sean correctos.");
+                        return mostrarAlerta("Error de Servidor", "Error al registrar cliente. Verifique que los datos sean correctos.", "error");
                     }
                 }
             }
@@ -967,7 +967,7 @@
             if(!clienteId) {
                 // Si el RTN ya existe, el backend dio error, pero para este flujo 
                 // necesitaríamos un buscador de clientes real. Por ahora alertamos.
-                return alert("El cliente ya existe o el RTN está duplicado.");
+                return mostrarAlerta("Cliente Existente", "El cliente ya existe o el RTN está duplicado.", "error");
             }
 
             // 2. Crear Orden
@@ -1002,7 +1002,7 @@
 
             if(respOrd.ok) {
                 const ordenResult = await respOrd.json();
-                alert(`${tipo} guardada exitosamente`);
+                mostrarAlerta("Éxito", `${tipo} guardada exitosamente`, "info");
                 
                 // Limpiar formulario y borradores
                 itemsSeleccionados = [];
@@ -1038,7 +1038,7 @@
             if (!resp) return;
 
             if(resp.ok) {
-                alert("Item agregado");
+                mostrarAlerta("Éxito", "Item agregado correctamente", "info");
                 cargarCatalogo();
             }
         }
@@ -1076,7 +1076,7 @@
             const cant = document.getElementById('compra-cantidad').value;
             const costo = document.getElementById('compra-costo').value;
             
-            if (!cant || !costo) return alert("Por favor complete todos los campos");
+            if (!cant || !costo) return mostrarAlerta("Datos Incompletos", "Por favor complete todos los campos de cantidad y costo.", "error");
 
             const params = new URLSearchParams({ item_id: id, cantidad: cant, costo_total: costo });
             const resp = await apiRequest(`${API_BASE_URL}/inventario/comprar?${params.toString()}`, { 
@@ -1085,7 +1085,7 @@
             });
 
             if (resp && resp.ok) {
-                alert("Inventario actualizado");
+                mostrarAlerta("Éxito", "Inventario actualizado correctamente", "info");
                 document.getElementById('modal-compra-stock').classList.add('hidden');
                 cargarCatalogo();
             }
@@ -1105,7 +1105,7 @@
             };
 
             if(!data.nombre) {
-                alert("El nombre del cliente es obligatorio");
+                mostrarAlerta("Nombre Requerido", "El nombre del cliente es obligatorio.", "error");
                 return;
             }
 
@@ -1118,7 +1118,7 @@
             if (!resp) return;
 
             if(resp.ok) {
-                alert("Cliente registrado exitosamente");
+                mostrarAlerta("Éxito", "Cliente registrado exitosamente", "info");
                 document.getElementById('reg-nombre').value = '';
                 document.getElementById('reg-identidad').value = '';
                 document.getElementById('reg-tel').value = '';
@@ -1127,11 +1127,11 @@
             } else {
                 try {
                     const err = await resp.json();
-                    alert("Error al guardar: " + (err.detail || "Error desconocido"));
+                    mostrarAlerta("Error al Guardar Cliente", err.detail || "Error desconocido al guardar el cliente.", "error");
                 } catch (e) {
                     const text = await resp.text();
                     console.error("Error del servidor:", text);
-                    alert("Error crítico del servidor. Verifique si el RTN ya existe o es muy largo.");
+                    mostrarAlerta("Error de Servidor", "Error crítico del servidor. Verifique si el RTN ya existe o es muy largo.", "error");
                 }
             }
         }
@@ -1228,7 +1228,7 @@
             });
 
             if (resp && resp.ok) {
-                alert("Datos del negocio actualizados correctamente");
+                mostrarAlerta("Éxito", "Datos del negocio actualizados correctamente", "info");
                 cacheNegocio = await resp.json();
             }
         }
@@ -1277,7 +1277,7 @@
                 direccion: document.getElementById('edit-cli-dir').value
             };
 
-            if (!data.nombre) return alert("El nombre del cliente es obligatorio");
+            if (!data.nombre) return mostrarAlerta("Nombre Requerido", "El nombre del cliente es obligatorio.", "error");
 
             const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
                 method: 'PUT',
@@ -1286,7 +1286,7 @@
             });
 
             if (resp && resp.ok) {
-                alert("Cliente actualizado correctamente");
+                mostrarAlerta("Éxito", "Cliente actualizado correctamente", "info");
                 document.getElementById('modal-cliente').classList.add('hidden');
                 cargarClientesFull();
                 cargarDocumentosRelacionados();
@@ -1302,7 +1302,7 @@
                 }
             } else if (resp) {
                 const err = await resp.json();
-                alert("Error al actualizar: " + err.detail);
+                mostrarAlerta("Error al Actualizar Cliente", err.detail || "Error desconocido al actualizar el cliente.", "error");
             }
         }
 
@@ -1324,7 +1324,7 @@
                 existencia: parseInt(document.getElementById('edit-inv-existencia').value)
             };
 
-            if (!data.nombre || isNaN(data.precio)) return alert("Nombre y precio son obligatorios");
+            if (!data.nombre || isNaN(data.precio)) return mostrarAlerta("Datos Incompletos", "El nombre y el precio del item son obligatorios.", "error");
 
             const resp = await apiRequest(`${API_BASE_URL}/inventario/${id}`, {
                 method: 'PUT',
@@ -1333,12 +1333,12 @@
             });
 
             if (resp && resp.ok) {
-                alert("Item actualizado correctamente");
+                mostrarAlerta("Éxito", "Item actualizado correctamente", "info");
                 document.getElementById('modal-inventario').classList.add('hidden');
                 cargarCatalogo();
             } else if (resp) {
                 const err = await resp.json();
-                alert("Error al actualizar: " + err.detail);
+                mostrarAlerta("Error al Actualizar Item", err.detail || "Error desconocido al actualizar el item.", "error");
             }
         }
 
@@ -1399,30 +1399,35 @@
             if (!resp) return;
 
             if(resp.ok) {
-                alert("Usuario creado");
+                mostrarAlerta("Éxito", "Usuario creado correctamente", "info");
                 cargarUsuarios();
                 document.getElementById('new-user').value = '';
                 document.getElementById('new-pass').value = '';
             } else {
                 const err = await resp.json();
-                alert("Error: " + err.detail);
+                mostrarAlerta("Error al Crear Usuario", err.detail || "Error desconocido al crear el usuario.", "error");
             }
         }
 
         async function eliminarUsuario(id) {
-            if(!confirm("¿Está seguro de eliminar este usuario?")) return;
-            const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, { 
-                method: 'DELETE', 
-                headers: getHeaders() 
-            });
-            if (!resp) return;
-            if(resp.ok) {
-                alert("Usuario eliminado correctamente");
-                cargarUsuarios();
-            } else {
-                const err = await resp.json();
-                alert("Error: " + err.detail);
-            }
+            mostrarConfirmacion(
+                "¿Eliminar Usuario?",
+                "¿Está seguro de eliminar este usuario? Esta acción es irreversible.",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, {
+                        method: 'DELETE',
+                        headers: getHeaders()
+                    });
+                    if (!resp) return;
+                    if(resp.ok) {
+                        mostrarAlerta("Éxito", "Usuario eliminado correctamente", "info");
+                        cargarUsuarios();
+                    } else {
+                        const err = await resp.json();
+                        mostrarAlerta("Error al Eliminar Usuario", err.detail || "Error desconocido al eliminar el usuario.", "error");
+                    }
+                }
+            );
         }
 
         function editarUsuario(id, username, rol) {
@@ -1439,7 +1444,7 @@
             const rol = document.getElementById('edit-user-rol').value;
             const pass = document.getElementById('edit-user-pass').value;
 
-            if (!username) return alert("El nombre de usuario es obligatorio");
+            if (!username) return mostrarAlerta("Nombre de Usuario Requerido", "El nombre de usuario es obligatorio.", "error");
 
             const data = { username, rol };
             if (pass) data.password = pass;
@@ -1451,12 +1456,12 @@
             });
 
             if (resp && resp.ok) {
-                alert("Usuario actualizado correctamente");
+                mostrarAlerta("Éxito", "Usuario actualizado correctamente", "info");
                 document.getElementById('modal-usuario').classList.add('hidden');
                 cargarUsuarios();
             } else if (resp) {
                 const err = await resp.json();
-                alert("Error: " + err.detail);
+                mostrarAlerta("Error al Actualizar Usuario", err.detail || "Error desconocido al actualizar el usuario.", "error");
             }
         }
 
@@ -1534,22 +1539,27 @@
         }
 
         async function convertirAOrden(id) {
-            if(!confirm("¿Desea convertir esta cotización en una orden de cobro? Los precios actuales serán respetados.")) return;
-            const resp = await apiRequest(`${API_BASE_URL}/caja/convertir-cotizacion/${id}`, { method: 'POST', headers: getHeaders() });
-            if (!resp) return;
-            if (resp.ok) {
-                alert("Cotización enviada a caja con éxito.");
-                document.getElementById('modal-factura').classList.add('hidden');
-                cargarCotizaciones();
-                cargarCobros();
-                return;
-            }
-            try {
-                const error = await resp.json();
-                alert("Error al enviar a caja: " + (error.detail || JSON.stringify(error)));
-            } catch (e) {
-                alert("Error al enviar a caja: " + resp.statusText);
-            }
+            mostrarConfirmacion(
+                "Convertir a Orden de Cobro",
+                "¿Desea convertir esta cotización en una orden de cobro? Los precios actuales serán respetados.",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/caja/convertir-cotizacion/${id}`, { method: 'POST', headers: getHeaders() });
+                    if (!resp) return;
+                    if (resp.ok) {
+                        mostrarAlerta("Éxito", "Cotización enviada a caja con éxito.", "info");
+                        document.getElementById('modal-factura').classList.add('hidden');
+                        cargarCotizaciones();
+                        cargarCobros();
+                        return;
+                    }
+                    try {
+                        const error = await resp.json();
+                        mostrarAlerta("Error al Convertir Cotización", error.detail || "Error desconocido al enviar a caja.", "error");
+                    } catch (e) {
+                        mostrarAlerta("Error de Servidor", "Error al enviar a caja: " + resp.statusText, "error");
+                    }
+                }
+            );
         }
 
         async function cargarPagadas() {
@@ -1651,19 +1661,24 @@
                 cargarTaller();
             } else if (resp) {
                 const err = await resp.json();
-                alert(err.detail);
+                mostrarAlerta("Error de Asignación", err.detail, "error");
             }
         }
 
         async function completarTrabajo(id) {
-            if(!confirm("¿Desea marcar este trabajo como completado? Se quitará de la pantalla.")) return;
-            const resp = await apiRequest(`${API_BASE_URL}/taller/completar/${id}`, { 
-                method: 'POST',
-                headers: getHeaders()
-            });
-            if (resp && resp.ok) {
-                cargarTaller();
-            }
+            mostrarConfirmacion(
+                "Completar Trabajo", 
+                "¿Desea marcar este trabajo como completado? Se quitará de la pantalla.", 
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/taller/completar/${id}`, { 
+                        method: 'POST',
+                        headers: getHeaders()
+                    });
+                    if (resp && resp.ok) {
+                        cargarTaller();
+                    }
+                }
+            );
         }
 
         async function cargarBalances() {
@@ -1739,7 +1754,7 @@
             });
 
             if (resp && resp.ok) {
-                alert("Documento anulado con éxito.");
+                mostrarAlerta("Éxito", "Documento anulado con éxito.", "info");
                 document.getElementById('modal-anular').classList.add('hidden');
                 document.getElementById('modal-factura').classList.add('hidden');
                 cargarPagadas();
@@ -1786,7 +1801,7 @@
             });
 
             if (resp && resp.ok) {
-                alert("Datos de facturación actualizados");
+                mostrarAlerta("Éxito", "Datos de facturación actualizados", "info");
                 location.reload(); 
             }
         }
@@ -1918,7 +1933,7 @@
             const comprobanteInput = document.getElementById('input-comprobante');
 
             if ((metodo === 'Tarjeta' || metodo === 'Transferencia') && !referencia) {
-                alert("Debe ingresar el número de referencia o confirmación");
+                mostrarAlerta("Referencia Requerida", "Debe ingresar el número de referencia o confirmación para el método de pago seleccionado.", "error");
                 return;
             }
 
@@ -1950,14 +1965,14 @@
             window.print();
 
             document.getElementById('modal-factura').classList.add('hidden');
-            alert("¡Cobro realizado con éxito!");
+            mostrarAlerta("Éxito", "¡Cobro realizado con éxito!", "info");
             cargarCobros();
         }
 
         function openComprobante(src) {
             const win = window.open('');
             if (!win) {
-                alert('No se pudo abrir el comprobante en una nueva ventana. Por favor habilite ventanas emergentes para este sitio.');
+                mostrarAlerta("Error al Abrir Comprobante", 'No se pudo abrir el comprobante en una nueva ventana. Por favor habilite ventanas emergentes para este sitio.', "error");
                 return;
             }
             win.document.write(`<!DOCTYPE html><html><head><title>Comprobante de Pago</title><style>body{margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:100%;max-height:100vh;display:block}</style></head><body><img src="${src}" alt="Comprobante de pago"></body></html>`);

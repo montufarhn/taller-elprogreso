@@ -2,10 +2,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import event
 import os
+import sys # Import sys for PyInstaller path handling
+
+# Determine the base path for the database file
+def get_db_path():
+    if getattr(sys, 'frozen', False):
+        # Running as a PyInstaller bundle, use the directory of the executable
+        return os.path.dirname(sys.executable)
+    else:
+        # Running as a script
+        return os.path.dirname(os.path.abspath(__file__))
+
+DB_BASE_PATH = get_db_path()
 
 # Si existe la variable de entorno DATABASE_URL (en la nube), la usa.
 # Si no, usa SQLite localmente.
-SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./taller.db")
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(DB_BASE_PATH, 'taller.db')}")
 
 # Fix para SQLAlchemy: Render y otros proveedores usan "postgres://" pero se requiere "postgresql://"
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
