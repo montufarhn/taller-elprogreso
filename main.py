@@ -399,6 +399,14 @@ def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db), admin: mode
     db_cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    
+    # Verificar si el cliente tiene órdenes de trabajo o cotizaciones no anuladas
+    ordenes_activas = db.query(models.OrdenTrabajo).filter(
+        models.OrdenTrabajo.cliente_id == cliente_id,
+        models.OrdenTrabajo.estado != "Anulada"
+    ).first()
+    if ordenes_activas:
+        raise HTTPException(status_code=400, detail="No se puede eliminar el cliente porque tiene facturas o cotizaciones pendientes/válidas.")
     db.delete(db_cliente)
     db.commit()
     return {"message": "Cliente eliminado"}
