@@ -485,11 +485,17 @@ def crear_orden(
     db.commit()
     db.refresh(nueva_orden)
 
-    negocio_config = db.query(models.NegocioConfig).first()
-    if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
-        numero_inicial = negocio_config.numero_inicio_factura
+    if tipo == "Cotizacion":
+        numero_inicial = 1
+        # Para cotizaciones no aplicamos RTN/DNI fiscal obligatoriamente
+        rtn = None
+        dni = None
     else:
-        numero_inicial = obtener_numero_inicial_desde_rango(negocio_config.rango_desde if negocio_config else None)
+        negocio_config = db.query(models.NegocioConfig).first()
+        if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
+            numero_inicial = negocio_config.numero_inicio_factura
+        else:
+            numero_inicial = obtener_numero_inicial_desde_rango(negocio_config.rango_desde if negocio_config else None)
 
     documentos_anteriores = db.query(models.OrdenTrabajo).filter(
         models.OrdenTrabajo.tipo == tipo,
@@ -676,10 +682,12 @@ def obtener_numero_inicial_desde_rango(rango_desde: Optional[str]) -> int:
 def format_ordenes_pago(query, db):
     ordenes_formateadas = []
     negocio_config = db.query(models.NegocioConfig).first()
+    
+    # Determinar numero inicial base para las facturas (Orden)
     if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
-        numero_inicial = negocio_config.numero_inicio_factura
+        numero_inicial_factura = negocio_config.numero_inicio_factura
     else:
-        numero_inicial = obtener_numero_inicial_desde_rango(negocio_config.rango_desde if negocio_config else None)
+        numero_inicial_factura = obtener_numero_inicial_desde_rango(negocio_config.rango_desde if negocio_config else None)
 
     for o, c in query:
         if o.tipo == "Orden":
@@ -687,13 +695,14 @@ def format_ordenes_pago(query, db):
                 models.OrdenTrabajo.tipo == "Orden",
                 models.OrdenTrabajo.id <= o.id
             ).count()
+            numero_documento = numero_inicial_factura + documentos_anteriores - 1
         else:
             documentos_anteriores = db.query(models.OrdenTrabajo).filter(
                 models.OrdenTrabajo.tipo == "Cotizacion",
                 models.OrdenTrabajo.id <= o.id
             ).count()
-
-        numero_documento = numero_inicial + documentos_anteriores - 1
+            # Las cotizaciones siempre inician su propia secuencia desde 1
+            numero_documento = documentos_anteriores
 
         cliente_nombre = o.factura_nombre or (c.nombre if c else "Cliente Eliminado")
         cliente_rtn = "Consumidor Final"
