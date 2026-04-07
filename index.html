@@ -1730,9 +1730,17 @@
         }
 
         async function cargarBalances() {
+            const desde = document.getElementById('rep-desde').value;
+            const hasta = document.getElementById('rep-hasta').value;
+
+            const params = new URLSearchParams();
+            if (desde) params.append('desde', desde);
+            if (hasta) params.append('hasta', hasta);
+            const queryString = params.toString() ? `?${params.toString()}` : "";
+
             const [respIng, respEgr] = await Promise.all([
-                apiRequest(`${API_BASE_URL}/caja/pagadas`, { headers: getHeaders() }),
-                apiRequest(`${API_BASE_URL}/reportes/egresos`, { headers: getHeaders() })
+                apiRequest(`${API_BASE_URL}/caja/pagadas${queryString}`, { headers: getHeaders() }),
+                apiRequest(`${API_BASE_URL}/reportes/egresos${queryString}`, { headers: getHeaders() })
             ]);
             
             cacheIngresosReporte = await respIng.json();
