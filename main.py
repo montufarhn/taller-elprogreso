@@ -115,6 +115,15 @@ class CobroRequest(BaseModel):
     referencia_pago: Optional[str] = None
     comprobante: Optional[str] = None
 
+class ReleaseNoteResponse(BaseModel):
+    id: int
+    version: str
+    titulo: str
+    descripcion: str
+    fecha: datetime
+    class Config:
+        from_attributes = True
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Crear usuarios iniciales si no existen
@@ -149,6 +158,21 @@ async def lifespan(app: FastAPI):
                 fecha_limite=datetime.now(timezone.utc) + timedelta(days=365)
             )
             db.add(config_inicial)
+            db.commit()
+
+        # Insertar nota de versión 3.5.3 si no existe
+        if not db.query(models.NotaVersion).filter(models.NotaVersion.version == "3.5.3").first():
+            nueva_nota = models.NotaVersion(
+                version="3.5.3",
+                titulo="Reportes Avanzados y Control Administrativo",
+                descripcion=(
+                    "• Exportación de reportes: Ahora puedes descargar tus balances en formatos CSV, XML y JSON.\n"
+                    "• Filtros por fecha: Implementado sistema de filtrado dinámico para reportes de ingresos y egresos.\n"
+                    "• Control total: El administrador ahora tiene la facultad de eliminar registros de ingresos o egresos por error.\n"
+                    "• Centro de Novedades: Se habilitó esta sección para dar seguimiento a las mejoras del taller."
+                )
+            )
+            db.add(nueva_nota)
             db.commit()
     finally:
         db.close()
@@ -605,7 +629,7 @@ def listar_pagadas(
     if hasta:
         query_obj = query_obj.filter(models.OrdenTrabajo.fecha < datetime.fromisoformat(hasta) + timedelta(days=1))
 
-    query = query_obj.order_by(models.OrdenTrabajo.id).all()
+    query = query_obj.order_by(models.OrdenTrabajo.fecha.desc()).all()
     
     return format_ordenes_pago(query, db)
 
@@ -623,6 +647,29 @@ def listar_egresos(
         query = query.filter(models.Egreso.fecha < datetime.fromisoformat(hasta) + timedelta(days=1))
         
     return query.order_by(models.Egreso.fecha.desc()).all()
+
+@app.delete("/reportes/egresos/{egreso_id}")
+def eliminar_egreso(egreso_id: int, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+    egreso = db.query(models.Egreso).filter(models.Egreso.id == egreso_id).first()
+    if not egreso:
+        raise HTTPException(status_code=404, detail="Egreso no encontrado")
+    db.delete(egreso)
+    db.commit()
+    return {"message": "Egreso eliminado correctamente"}
+
+@app.delete("/ordenes/{orden_id}")
+def eliminar_orden_admin(orden_id: int, db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
+    orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
+    if not orden:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    db.delete(orden)
+    db.commit()
+    return {"message": "Registro eliminado correctamente"}
+
+@app.get("/sistema/notas-version", response_model=List[ReleaseNoteResponse])
+def listar_notas_version(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    # Retornar las notas de versión ordenadas por fecha descendente
+    return db.query(models.NotaVersion).order_by(models.NotaVersion.fecha.desc()).all()
 
 @app.get("/reportes/rendimiento")
 def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):

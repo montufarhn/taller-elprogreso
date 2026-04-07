@@ -66,6 +66,7 @@
                 <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Rendimiento</button>
                 <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Usuarios de Sistema</button>
                 <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Datos del Negocio</button>
+                <button id="nav-actualizaciones" onclick="switchTab('tab-actualizaciones')" class="text-gray-500 hover:text-blue-600 font-bold transition-colors">✨ Novedades</button>
             </nav>
         </div>
 
@@ -280,6 +281,14 @@
                 <button onclick="crearItemCatalogo()" class="bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Agregar Item</button>
             </div>
             <div id="lista-catalogo" class="space-y-2"></div>
+        </div>
+
+        <!-- Sección: Notas de Versión -->
+        <div id="tab-actualizaciones" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-2xl mb-6 text-blue-800 border-b pb-2">Historial de Actualizaciones</h3>
+            <div id="lista-notas-version" class="space-y-6 border-l-2 border-blue-100 ml-4 pl-6">
+                <!-- Se llena dinámicamente -->
+            </div>
         </div>
 
         <!-- Panel Gestión de Clientes (Sección Aparte) -->
@@ -634,6 +643,7 @@
             if(tabId === 'tab-taller') cargarTaller();
             if(tabId === 'tab-usuarios' && currentUser.rol === 'admin') cargarUsuarios();
             if(tabId === 'tab-negocio' && currentUser.rol === 'admin') cargarDatosNegocio();
+            if(tabId === 'tab-actualizaciones') cargarNotasVersion();
         }
 
         function showDashboard() {
@@ -1758,7 +1768,10 @@
                         <p class="font-bold">${i.cliente_nombre}</p>
                         <p class="text-xs text-gray-500">${new Date(i.fecha + 'Z').toLocaleString()}</p>
                     </div>
-                    <span class="text-green-600 font-bold">+Lps. ${i.total.toFixed(2)}</span>
+                    <div class="flex flex-col items-end">
+                        <span class="text-green-600 font-bold">+Lps. ${i.total.toFixed(2)}</span>
+                        ${currentUser.rol === 'admin' ? `<button onclick="eliminarIngresoReporte(${i.id})" class="text-[10px] text-red-500 hover:underline mt-1">Eliminar Registro</button>` : ''}
+                    </div>
                 </div>
             `).join('');
             
@@ -1768,9 +1781,40 @@
                         <p class="font-bold">${e.descripcion}</p>
                         <p class="text-xs text-gray-500">${new Date(e.fecha + 'Z').toLocaleString()}</p>
                     </div>
-                    <span class="text-red-600 font-bold">-Lps. ${e.monto.toFixed(2)}</span>
+                    <div class="flex flex-col items-end">
+                        <span class="text-red-600 font-bold">-Lps. ${e.monto.toFixed(2)}</span>
+                        ${currentUser.rol === 'admin' ? `<button onclick="eliminarEgresoReporte(${e.id})" class="text-[10px] text-red-500 hover:underline mt-1">Eliminar</button>` : ''}
+                    </div>
                 </div>
             `).join('');
+        }
+
+        async function eliminarIngresoReporte(id) {
+            mostrarConfirmacion(
+                "Eliminar Venta",
+                "¿Está seguro de eliminar este registro permanentemente? Esto afectará los balances y no se puede deshacer.",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/ordenes/${id}`, { method: 'DELETE', headers: getHeaders() });
+                    if (resp && resp.ok) {
+                        mostrarAlerta("Éxito", "Venta eliminada del sistema", "info");
+                        cargarBalances();
+                    }
+                }
+            );
+        }
+
+        async function eliminarEgresoReporte(id) {
+            mostrarConfirmacion(
+                "Eliminar Egreso",
+                "¿Desea borrar este gasto de la base de datos?",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/reportes/egresos/${id}`, { method: 'DELETE', headers: getHeaders() });
+                    if (resp && resp.ok) {
+                        mostrarAlerta("Éxito", "Egreso eliminado", "info");
+                        cargarBalances();
+                    }
+                }
+            );
         }
 
         function exportarReporte(formato) {
@@ -1819,6 +1863,32 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        async function cargarNotasVersion() {
+            const resp = await apiRequest(`${API_BASE_URL}/sistema/notas-version`, { headers: getHeaders() });
+            if (!resp || !resp.ok) return;
+            
+            const notas = await resp.json();
+            const container = document.getElementById('lista-notas-version');
+            
+            if (notas.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 italic">No hay notas registradas aún.</p>';
+                return;
+            }
+
+            container.innerHTML = notas.map(n => `
+                <div class="relative">
+                    <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow-sm"></div>
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-lg text-gray-800">${n.titulo} <span class="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">${n.version}</span></h4>
+                            <span class="text-xs text-gray-500 font-medium">${new Date(n.fecha).toLocaleString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line">${n.descripcion}</p>
+                    </div>
+                </div>
+            `).join('');
         }
 
         async function cargarRendimiento() {

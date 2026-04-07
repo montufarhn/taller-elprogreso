@@ -95,3 +95,11 @@ class NegocioConfig(Base):
     fecha_limite = Column(DateTime)
     numero_inicio_factura = Column(Integer, default=1)
     logo = Column(String, nullable=True)
+
+class NotaVersion(Base):
+    __tablename__ = "notas_version"
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    titulo = Column(String, nullable=False)
+    descripcion = Column(String, nullable=False)
+    version = Column(String, nullable=False)
