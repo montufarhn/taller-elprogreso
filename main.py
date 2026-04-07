@@ -1,4 +1,5 @@
 import os
+import re
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.responses import FileResponse
@@ -171,7 +172,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     if not user or not pwd_context.verify(form_data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectos")
     
-    access_token = jwt.encode({"sub": user.username, "rol": user.rol}, SECRET_KEY, algorithm=ALGORITHM)
+    # Añadimos expiración de 24 horas por seguridad
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    access_token = jwt.encode({"sub": user.username, "rol": user.rol, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
     return {"access_token": access_token, "token_type": "bearer", "rol": user.rol, "user_id": user.id}
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -487,9 +490,6 @@ def crear_orden(
 
     if tipo == "Cotizacion":
         numero_inicial = 1
-        # Para cotizaciones no aplicamos RTN/DNI fiscal obligatoriamente
-        rtn = None
-        dni = None
     else:
         negocio_config = db.query(models.NegocioConfig).first()
         if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
@@ -587,19 +587,42 @@ def cobrar_orden(
 
 # Admin: Listar Facturas Pagadas
 @app.get("/caja/pagadas")
-def listar_pagadas(db: Session = Depends(get_db), user: models.Usuario = Depends(check_cajero_or_admin)):
-    query = db.query(models.OrdenTrabajo, models.Cliente).outerjoin(
+def listar_pagadas(
+    desde: Optional[str] = None, 
+    hasta: Optional[str] = None, 
+    db: Session = Depends(get_db), 
+    user: models.Usuario = Depends(check_cajero_or_admin)
+):
+    query_obj = db.query(models.OrdenTrabajo, models.Cliente).outerjoin(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).filter(
         models.OrdenTrabajo.tipo == "Orden",
         models.OrdenTrabajo.estado.in_(["Pagada", "Anulada"])
-    ).order_by(models.OrdenTrabajo.id).all()
+    )
+
+    if desde:
+        query_obj = query_obj.filter(models.OrdenTrabajo.fecha >= datetime.fromisoformat(desde))
+    if hasta:
+        query_obj = query_obj.filter(models.OrdenTrabajo.fecha < datetime.fromisoformat(hasta) + timedelta(days=1))
+
+    query = query_obj.order_by(models.OrdenTrabajo.id).all()
     
     return format_ordenes_pago(query, db)
 
 @app.get("/reportes/egresos", response_model=List[EgresoResponse])
-def listar_egresos(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
-    return db.query(models.Egreso).order_by(models.Egreso.fecha.desc()).all()
+def listar_egresos(
+    desde: Optional[str] = None, 
+    hasta: Optional[str] = None, 
+    db: Session = Depends(get_db), 
+    admin: models.Usuario = Depends(check_admin)
+):
+    query = db.query(models.Egreso)
+    if desde:
+        query = query.filter(models.Egreso.fecha >= datetime.fromisoformat(desde))
+    if hasta:
+        query = query.filter(models.Egreso.fecha < datetime.fromisoformat(hasta) + timedelta(days=1))
+        
+    return query.order_by(models.Egreso.fecha.desc()).all()
 
 @app.get("/reportes/rendimiento")
 def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = Depends(check_admin)):
@@ -668,7 +691,6 @@ def reporte_rendimiento(db: Session = Depends(get_db), admin: models.Usuario = D
 def obtener_numero_inicial_desde_rango(rango_desde: Optional[str]) -> int:
     if not rango_desde:
         return 1
-    import re
     match = re.search(r"(\d+)$", rango_desde.strip())
     if not match:
         return 1
@@ -682,6 +704,7 @@ def obtener_numero_inicial_desde_rango(rango_desde: Optional[str]) -> int:
 def format_ordenes_pago(query, db):
     ordenes_formateadas = []
     negocio_config = db.query(models.NegocioConfig).first()
+    IVA_RATE = 0.15
     
     # Determinar numero inicial base para las facturas (Orden)
     if negocio_config and getattr(negocio_config, 'numero_inicio_factura', None) is not None:
@@ -711,10 +734,16 @@ def format_ordenes_pago(query, db):
             cliente_rtn = o.factura_rtn or (c.rtn if c else "Consumidor Final")
             cliente_dni = o.factura_dni or (c.dni if c else "N/A")
 
+        total = float(o.total)
+        subtotal = total / (1 + IVA_RATE)
+        impuesto = total - subtotal
+
         ordenes_formateadas.append({
             "id": o.id,
             "descripcion": o.descripcion,
-            "total": o.total,
+            "total": round(total, 2),
+            "subtotal": round(subtotal, 2),
+            "impuesto": round(impuesto, 2),
             "tipo": o.tipo,
             "fecha": o.fecha,
             "estado": o.estado,

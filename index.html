@@ -224,6 +224,23 @@
 
         <!-- Módulo de Reportes -->
         <div id="tab-reportes" class="tab-content hidden space-y-6">
+            <div class="bg-white p-4 rounded-xl shadow-md flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Desde</label>
+                    <input id="rep-desde" type="date" class="p-2 border rounded text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Hasta</label>
+                    <input id="rep-hasta" type="date" class="p-2 border rounded text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button onclick="cargarBalances()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Filtrar</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="exportarReporte('csv')" class="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-green-700">Exportar CSV</button>
+                    <button onclick="exportarReporte('xml')" class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-purple-700">Exportar XML</button>
+                    <button onclick="exportarReporte('json')" class="bg-orange-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-orange-700">Exportar JSON</button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-6 rounded-xl shadow-md">
                     <h3 class="font-bold text-xl mb-4 text-green-700 border-b pb-2">Ingresos (Ventas)</h3>
@@ -540,6 +557,8 @@
         let cacheCobros = [];
         let cacheCotizaciones = [];
         let cachePagadas = [];
+        let cacheIngresosReporte = [];
+        let cacheEgresosReporte = [];
         let cacheNegocio = null;
         let currentEditingOrderId = null;
         const IVA_RATE = 0.15;
@@ -1162,31 +1181,6 @@
             }
         }
 
-        async function registrar() {
-            // (Esta función queda obsoleta por enviarOrden, pero se puede mantener para registros rápidos)
-            const data = {
-                nombre: document.getElementById('nombre').value,
-                identidad: document.getElementById('identidad').value,
-                telefono: document.getElementById('tel').value,
-                direccion: document.getElementById('dir').value
-            };
-            const response = await apiRequest(`${API_BASE_URL}/clientes/`, { 
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(data)
-            });
-            if (!response) return;
-
-            if(response.ok) {
-                alert("Cliente guardado");
-                localStorage.removeItem('draft_nombre');
-                localStorage.removeItem('draft_identidad');
-            } else {
-                const errorData = await response.json();
-                alert("Error: " + (errorData.detail || "No se pudo registrar el cliente"));
-            }
-        }
-
         async function cargarClientesFull() {
             const resp = await apiRequest(`${API_BASE_URL}/clientes/`, { headers: getHeaders() });
             if (!resp) return;
@@ -1741,17 +1735,17 @@
                 apiRequest(`${API_BASE_URL}/reportes/egresos`, { headers: getHeaders() })
             ]);
             
-            const ingresos = await respIng.json();
-            const egresos = await respEgr.json();
-            const totalIng = ingresos.reduce((sum, o) => sum + o.total, 0);
-            const totalEgr = egresos.reduce((sum, e) => sum + e.monto, 0);
+            cacheIngresosReporte = await respIng.json();
+            cacheEgresosReporte = await respEgr.json();
+            const totalIng = cacheIngresosReporte.reduce((sum, o) => sum + (o.estado !== 'Anulada' ? o.total : 0), 0);
+            const totalEgr = cacheEgresosReporte.reduce((sum, e) => sum + e.monto, 0);
             
             document.getElementById('total-ingresos-label').innerText = `Ingresos: Lps. ${totalIng.toFixed(2)}`;
             document.getElementById('total-egresos-label').innerText = `Egresos: Lps. ${totalEgr.toFixed(2)}`;
             document.getElementById('balance-final-label').innerText = `Utilidad: Lps. ${(totalIng - totalEgr).toFixed(2)}`;
             
-            document.getElementById('lista-reporte-ingresos').innerHTML = ingresos.map(i => `
-                <div class="flex justify-between p-2 border-b text-sm">
+            document.getElementById('lista-reporte-ingresos').innerHTML = cacheIngresosReporte.map(i => `
+                <div class="flex justify-between p-2 border-b text-sm ${i.estado === 'Anulada' ? 'opacity-50 line-through' : ''}">
                     <div>
                         <p class="font-bold">${i.cliente_nombre}</p>
                         <p class="text-xs text-gray-500">${new Date(i.fecha + 'Z').toLocaleString()}</p>
@@ -1760,7 +1754,7 @@
                 </div>
             `).join('');
             
-            document.getElementById('lista-reporte-egresos').innerHTML = egresos.map(e => `
+            document.getElementById('lista-reporte-egresos').innerHTML = cacheEgresosReporte.map(e => `
                 <div class="flex justify-between p-2 border-b text-sm">
                     <div>
                         <p class="font-bold">${e.descripcion}</p>
@@ -1769,6 +1763,54 @@
                     <span class="text-red-600 font-bold">-Lps. ${e.monto.toFixed(2)}</span>
                 </div>
             `).join('');
+        }
+
+        function exportarReporte(formato) {
+            if (!cacheIngresosReporte.length && !cacheEgresosReporte.length) {
+                return mostrarAlerta("Sin Datos", "No hay datos para exportar. Filtre primero.", "error");
+            }
+
+            let contenido = "";
+            let mimeType = "";
+            let extension = "";
+
+            if (formato === 'json') {
+                contenido = JSON.stringify({ ingresos: cacheIngresosReporte, egresos: cacheEgresosReporte }, null, 2);
+                mimeType = "application/json";
+                extension = "json";
+            } else if (formato === 'csv') {
+                contenido = "TIPO,NUM_FACTURA,FECHA,CLIENTE/DESCRIPCION,SUBTOTAL,IMPUESTO,TOTAL,ESTADO\n";
+                cacheIngresosReporte.forEach(i => {
+                    contenido += `INGRESO,${i.documento_numero},${i.fecha},"${i.cliente_nombre}",${i.subtotal},${i.impuesto},${i.total},${i.estado}\n`;
+                });
+                cacheEgresosReporte.forEach(e => {
+                    contenido += `EGRESO,N/A,${e.fecha},"${e.descripcion}",${e.monto},0,${e.monto},Pagado\n`;
+                });
+                mimeType = "text/csv";
+                extension = "csv";
+            } else if (formato === 'xml') {
+                contenido = `<?xml version="1.0" encoding="UTF-8"?>\n<ReporteTaller>\n  <Ingresos>\n`;
+                cacheIngresosReporte.forEach(i => {
+                    contenido += `    <Factura>\n      <Numero>${i.documento_numero}</Numero>\n      <Fecha>${i.fecha}</Fecha>\n      <Cliente>${i.cliente_nombre}</Cliente>\n      <Subtotal>${i.subtotal}</Subtotal>\n      <Impuesto>${i.impuesto}</Impuesto>\n      <Total>${i.total}</Total>\n      <Estado>${i.estado}</Estado>\n    </Factura>\n`;
+                });
+                contenido += `  </Ingresos>\n  <Egresos>\n`;
+                cacheEgresosReporte.forEach(e => {
+                    contenido += `    <Egreso>\n      <Fecha>${e.fecha}</Fecha>\n      <Descripcion>${e.descripcion}</Descripcion>\n      <Monto>${e.monto}</Monto>\n    </Egreso>\n`;
+                });
+                contenido += `  </Egresos>\n</ReporteTaller>`;
+                mimeType = "application/xml";
+                extension = "xml";
+            }
+
+            const blob = new Blob([contenido], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Reporte_${new Date().toISOString().split('T')[0]}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         async function cargarRendimiento() {
