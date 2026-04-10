@@ -174,6 +174,21 @@ async def lifespan(app: FastAPI):
             )
             db.add(nueva_nota)
             db.commit()
+
+        # Insertar nota de versión 3.5.4 si no existe
+        if not db.query(models.NotaVersion).filter(models.NotaVersion.version == "3.5.4").first():
+            nota_354 = models.NotaVersion(
+                version="3.5.4",
+                titulo="Sistema de Descuentos y Optimización",
+                descripcion=(
+                    "• Descuentos Flexibles: Se ha implementado la opción de aplicar porcentajes de descuento a cotizaciones y órdenes.\n"
+                    "• Cálculos en Tiempo Real: El panel del Jefe de Pista ahora recalcula totales e impuestos instantáneamente al aplicar un descuento.\n"
+                    "• Transparencia en Facturación: El monto ahorrado se muestra ahora de forma clara en los documentos impresos.\n"
+                    "• Estabilidad del Sistema: Mejoras internas en la estructura del servidor para un inicio más robusto."
+                )
+            )
+            db.add(nota_354)
+            db.commit()
     finally:
         db.close()
     yield
@@ -468,6 +483,7 @@ def crear_orden(
     descripcion: str, 
     total: float, 
     factura_nombre: str,
+    descuento: float = 0.0,
     factura_identidad: Optional[str] = None,
     tipo: str = "Orden", 
     placa: Optional[str] = None,
@@ -480,6 +496,10 @@ def crear_orden(
     db: Session = Depends(get_db), 
     current_user: models.Usuario = Depends(get_current_user)
 ):
+    # Validar rango de descuento
+    if descuento < 0 or descuento > 100:
+        raise HTTPException(status_code=400, detail="El descuento debe estar entre 0 y 100 por ciento.")
+
     # Buscar o crear vehículo
     vehiculo = None
     if placa:
@@ -504,6 +524,7 @@ def crear_orden(
         factura_dni=dni,
         descripcion=descripcion, 
         total=total, 
+        descuento=descuento,
         tipo=tipo,
         requiere_taller=requiere_taller,
         mecanico_id=mecanico_id
@@ -532,6 +553,7 @@ def crear_orden(
         "id": nueva_orden.id,
         "descripcion": nueva_orden.descripcion,
         "total": nueva_orden.total,
+        "descuento": nueva_orden.descuento,
         "tipo": nueva_orden.tipo,
         "fecha": nueva_orden.fecha,
         "estado": nueva_orden.estado,
@@ -789,6 +811,7 @@ def format_ordenes_pago(query, db):
             "id": o.id,
             "descripcion": o.descripcion,
             "total": round(total, 2),
+            "descuento": o.descuento,
             "subtotal": round(subtotal, 2),
             "impuesto": round(impuesto, 2),
             "tipo": o.tipo,

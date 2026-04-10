@@ -61,6 +61,7 @@ class OrdenTrabajo(Base):
     comprobante_pago = Column(String, nullable=True) # Almacena imagen en Base64
     taller_completado = Column(Boolean, default=False)
     requiere_taller = Column(Boolean, default=False)
+    descuento = Column(Float, default=0.0)
     mecanico_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     inicio_trabajo = Column(DateTime, nullable=True)
     fin_trabajo = Column(DateTime, nullable=True)

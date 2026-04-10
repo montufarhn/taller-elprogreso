@@ -111,6 +111,12 @@
                     <div id="items-orden" class="space-y-2 mb-4">
                         <!-- Items agregados aparecerán aquí -->
                     </div>
+                    <div class="mb-2 flex items-center justify-end gap-2 pr-2">
+                        <label class="text-xs font-bold text-purple-600 uppercase">¿Aplicar Descuento?</label>
+                        <input id="descuento-input" type="number" min="0" max="100" value="0" 
+                            class="w-16 p-1 border rounded text-center text-sm focus:ring-1 focus:ring-purple-400 outline-none" oninput="renderItemsOrden()">
+                        <span class="text-xs font-bold text-gray-500">%</span>
+                    </div>
                     <div class="flex justify-between items-center font-bold text-lg p-2 bg-gray-50 rounded">
                         <span>Total:</span>
                         <span>Lps. <span id="total-orden">0.00</span></span>
@@ -928,10 +934,10 @@
 
         function renderItemsOrden() {
             const container = document.getElementById('items-orden');
-            let total = 0;
+            let subtotal_items = 0;
             container.innerHTML = itemsSeleccionados.map((item, index) => {
                 const subtotal = item.precio * item.cantidad;
-                total += subtotal;
+                subtotal_items += subtotal;
                 return `<div class="flex justify-between items-center bg-gray-100 p-2 rounded text-sm">
                     <div class="flex flex-col">
                         <span class="font-bold">${item.nombre}</span>
@@ -946,7 +952,11 @@
                     </div>
                 </div>`;
             }).join('');
-            document.getElementById('total-orden').innerText = total.toFixed(2);
+            
+            const descPerc = parseFloat(document.getElementById('descuento-input').value) || 0;
+            const totalFinal = subtotal_items * (1 - (descPerc / 100));
+            
+            document.getElementById('total-orden').innerText = totalFinal.toFixed(2);
         }
 
         function removerItem(index) {
@@ -1014,6 +1024,7 @@
             // 2. Crear Orden
             const desc = itemsSeleccionados.map(i => `${i.cantidad}|${i.nombre}|${i.precio}`).join(";");
             const total = parseFloat(document.getElementById('total-orden').innerText);
+            const discountPerc = parseFloat(document.getElementById('descuento-input').value) || 0;
             
             const requiereTaller = itemsSeleccionados.some(i => i.tipo === 'Mano de Obra');
             const mecanicoId = document.getElementById('select-mecanico-asignado').value;
@@ -1027,6 +1038,7 @@
             params.append('cliente_id', clienteId);
             params.append('descripcion', desc);
             params.append('total', total);
+            params.append('descuento', discountPerc);
             params.append('factura_nombre', clienteData.nombre);
             if (clienteData.identidad) params.append('factura_identidad', clienteData.identidad);
             params.append('tipo', tipo);
@@ -1056,6 +1068,7 @@
                     const el = document.getElementById(id);
                     if(el) el.value = '';
                 });
+                document.getElementById('descuento-input').value = '0';
                 localStorage.removeItem('draft_nombre');
                 localStorage.removeItem('draft_identidad');
                 selectedClienteId = null;
@@ -2037,6 +2050,10 @@
             });
 
             const ordenTotal = parseFloat(orden.total) || 0;
+            const dPerc = parseFloat(orden.descuento) || 0;
+            const subtotalSinDesc = dPerc > 0 ? ordenTotal / (1 - dPerc/100) : ordenTotal;
+            const montoDescuento = subtotalSinDesc - ordenTotal;
+
             const { base, iva } = calcularImpuesto(ordenTotal);
 
             // Lógica para identificar la identidad del cliente en factura o cotización
@@ -2090,6 +2107,12 @@
                         </div>
                     `).join('')}
                 </div>
+                ${dPerc > 0 ? `
+                <div class="flex justify-between text-xs text-purple-700 italic mt-2 border-t border-dashed pt-1">
+                    <span>Descuento Aplicado (${dPerc}%):</span>
+                    <span>- Lps. ${montoDescuento.toFixed(2)}</span>
+                </div>
+                ` : ''}
                 <div class="mt-3 text-sm space-y-1 border-t pt-2">
                     <div class="flex justify-between">
                         <span>Subtotal:</span>
