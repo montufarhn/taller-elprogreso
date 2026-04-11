@@ -382,6 +382,11 @@
                 <button id="btn-imprimir-copia" onclick="window.print()" 
                     class="hidden flex-1 bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 text-lg">Imprimir Copia</button>
             </div>
+            <!-- Nueva Sección: Asignación de mecánico desde el modal para Admin/Jefe -->
+            <div id="modal-asignar-mecanico" class="hidden mt-4 p-3 bg-blue-50 border border-blue-100 rounded">
+                <label class="block text-xs font-bold text-blue-600 uppercase mb-1">Control de Taller: Asignar Mecánico</label>
+                <select id="select-mecanico-modal" class="w-full p-2 border rounded text-sm bg-white" onchange="asignarMecanicoDesdeModal()"></select>
+            </div>
             <button id="btn-anular-factura-modal" 
                 class="w-full mt-2 text-red-600 text-sm font-bold underline">Anular esta factura</button>
         </div>
@@ -691,7 +696,7 @@
             if (currentUser.rol === 'admin') {
                 document.getElementById('panel-historial').classList.remove('hidden');
             }
-            if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico') {
+            if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico' || currentUser.rol === 'jefe_pista') {
                 document.getElementById('nav-taller').classList.remove('hidden');
                 // Actualización automática para el taller cada 10 segundos
                 setInterval(cargarTaller, 10000);
@@ -1689,6 +1694,7 @@
             if (!resp) return;
             const datos = await resp.json();
             const container = document.getElementById('lista-taller');
+            const esAdminJefe = currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista';
             
             if (datos.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 italic">No hay vehículos en espera.</p>';
@@ -1711,16 +1717,30 @@
                             ${o.inicio_trabajo ? `<span class="text-[10px] text-blue-600 font-bold uppercase">Iniciado: ${new Date(o.inicio_trabajo + 'Z').toLocaleTimeString()}</span>` : ''}
                         </div>
                         ${!o.mecanico_id 
-                            ? `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Tomar Trabajo</button>`
-                            : (o.mecanico_id === currentUser.user_id 
-                                ? (o.inicio_trabajo 
-                                    ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-700">Trabajo Completado</button>`
-                                    : `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700">Iniciar Mi Trabajo</button>`)
-                                : `<span class="text-xs font-bold text-gray-400 italic">En proceso por otro...</span>`)
+                            ? (esAdminJefe 
+                                ? `<select onchange="asignarMecanicoDirecto(${o.id}, this.value)" class="p-1 border rounded text-xs">${generarOpcionesMecanicos(null)}</select>`
+                                : `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Tomar Trabajo</button>`)
+                            : (esAdminJefe
+                                ? `<div class="flex flex-col items-end gap-1">
+                                     <span class="text-[10px] font-bold text-gray-500">Mecánico: ${o.mecanico_nombre.toUpperCase()}</span>
+                                     <select onchange="asignarMecanicoDirecto(${o.id}, this.value)" class="p-1 border rounded text-[10px] bg-white">${generarOpcionesMecanicos(o.mecanico_id)}</select>
+                                     ${o.inicio_trabajo ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold">Forzar Completado</button>` : ''}
+                                   </div>`
+                                : (o.mecanico_id === currentUser.user_id 
+                                    ? (o.inicio_trabajo 
+                                        ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-700">Trabajo Completado</button>`
+                                        : `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700">Iniciar Mi Trabajo</button>`)
+                                    : `<span class="text-xs font-bold text-gray-400 italic">En proceso por: ${o.mecanico_nombre.toUpperCase()}</span>`))
                         }
                     </div>
                 </div>
             `).join('');
+        }
+
+        function generarOpcionesMecanicos(selectedId) {
+            let html = `<option value="">-- Reasignar --</option>`;
+            html += cacheMecanicos.map(m => `<option value="${m.id}" ${m.id == selectedId ? 'selected' : ''}>${m.username.toUpperCase()}</option>`).join('');
+            return html;
         }
 
         async function asignarTrabajo(id) {
@@ -1733,6 +1753,17 @@
             } else if (resp) {
                 const err = await resp.json();
                 mostrarAlerta("Error de Asignación", err.detail, "error");
+            }
+        }
+
+        async function asignarMecanicoDirecto(ordenId, mecanicoId) {
+            const url = `${API_BASE_URL}/caja/asignar-mecanico/${ordenId}${mecanicoId ? `?mecanico_id=${mecanicoId}` : ''}`;
+            const resp = await apiRequest(url, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (resp && resp.ok) {
+                cargarTaller();
             }
         }
 
@@ -2139,6 +2170,21 @@
             document.getElementById('btn-confirmar-cobro').onclick = () => cobrar(orden.id);
             document.getElementById('btn-anular-factura-modal').onclick = () => anularFactura(orden.id);
             document.getElementById('modal-factura').classList.remove('hidden');
+        }
+
+        async function asignarMecanicoDesdeModal() {
+            const mecanicoId = document.getElementById('select-mecanico-modal').value;
+            const url = `${API_BASE_URL}/caja/asignar-mecanico/${currentEditingOrderId}${mecanicoId ? `?mecanico_id=${mecanicoId}` : ''}`;
+            
+            const resp = await apiRequest(url, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Asignación de taller actualizada", "info");
+                cargarDocumentosRelacionados();
+            }
         }
 
         async function cobrar(id) {

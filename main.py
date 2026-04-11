@@ -189,6 +189,21 @@ async def lifespan(app: FastAPI):
             )
             db.add(nota_354)
             db.commit()
+
+        # Insertar nota de versión 3.6.0 para las correcciones actuales
+        if not db.query(models.NotaVersion).filter(models.NotaVersion.version == "3.6.0").first():
+            nota_360 = models.NotaVersion(
+                version="3.6.0",
+                titulo="Optimización de Taller y Control Administrativo",
+                descripcion=(
+                    "• Botón 'Trabajo Completado' Corregido: Los mecánicos ahora pueden finalizar tareas pre-asignadas sin errores de validación.\n"
+                    "• Pantalla Taller Pro: El Jefe de Pista ahora tiene acceso total al taller para supervisar y organizar el equipo.\n"
+                    "• Reasignación en Tiempo Real: Admin y Jefe pueden asignar o cambiar mecánicos directamente desde las tarjetas de taller.\n"
+                    "• Identificación de Personal: Se muestra el nombre del mecánico responsable en cada vehículo para un flujo de trabajo más ordenado."
+                )
+            )
+            db.add(nota_360)
+            db.commit()
     finally:
         db.close()
     yield
@@ -246,9 +261,9 @@ def check_cajero_or_admin(current_user: models.Usuario = Depends(get_current_use
         raise HTTPException(status_code=403, detail="Permiso denegado: Acceso restringido a Administrador o Cajero")
     return current_user
 
-def check_mecanico_or_admin(current_user: models.Usuario = Depends(get_current_user)):
-    if current_user.rol not in ["admin", "mecanico"]:
-        raise HTTPException(status_code=403, detail="Permiso denegado: Solo el Administrador o el Mecánico pueden ver esta pantalla")
+def check_taller_access(current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ["admin", "mecanico", "jefe_pista"]:
+        raise HTTPException(status_code=403, detail="Permiso denegado: No tiene acceso a la gestión de taller")
     return current_user
 
 def procesar_identidad(identidad_str: Optional[str]):
@@ -560,7 +575,8 @@ def crear_orden(
         "cliente_nombre": nueva_orden.factura_nombre,
         "cliente_rtn": nueva_orden.factura_rtn or "Consumidor Final",
         "cliente_dni": nueva_orden.factura_dni or "N/A",
-        "documento_numero": documento_numero
+        "documento_numero": documento_numero,
+        "mecanico_id": nueva_orden.mecanico_id
     }
 
 # Cajero: Ver Ordenes Pendientes de Cobro
@@ -823,7 +839,8 @@ def format_ordenes_pago(query, db):
             "metodo_pago": o.metodo_pago,
             "referencia_pago": o.referencia_pago,
             "comprobante_pago": o.comprobante_pago,
-            "documento_numero": numero_documento
+            "documento_numero": numero_documento,
+            "mecanico_id": o.mecanico_id
         })
     return ordenes_formateadas
 
@@ -851,15 +868,32 @@ def anular_factura(orden_id: int, db: Session = Depends(get_db), user: models.Us
     db.commit()
     return {"message": "Factura anulada exitosamente"}
 
+# Admin/Jefe: Asignar o re-asignar mecánico a una orden ya existente
+@app.post("/caja/asignar-mecanico/{orden_id}")
+def asignar_mecanico_manual(orden_id: int, mecanico_id: Optional[int] = None, db: Session = Depends(get_db), user: models.Usuario = Depends(check_jefe_or_admin)):
+    orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
+    if not orden: raise HTTPException(status_code=404, detail="Orden no encontrada")
+    
+    if mecanico_id:
+        orden.mecanico_id = mecanico_id
+        orden.requiere_taller = True
+    else:
+        orden.mecanico_id = None
+    db.commit()
+    return {"message": "Mecánico actualizado correctamente"}
+
 # Pantalla Taller: Asignarse un trabajo
 @app.post("/taller/asignar/{orden_id}")
-def asignar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
+def asignar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_taller_access)):
     # Verificar si el mecánico ya tiene un trabajo activo
-    trabajo_activo = db.query(models.OrdenTrabajo).filter(
-        models.OrdenTrabajo.mecanico_id == current_user.id,
-        models.OrdenTrabajo.taller_completado == False
-    ).first()
-    
+    trabajo_activo = None
+    if current_user.rol == "mecanico":
+        trabajo_activo = db.query(models.OrdenTrabajo).filter(
+            models.OrdenTrabajo.mecanico_id == current_user.id,
+            models.OrdenTrabajo.taller_completado == False,
+            models.OrdenTrabajo.inicio_trabajo != None
+        ).first()
+
     if trabajo_activo:
         raise HTTPException(status_code=400, detail="Ya tienes un trabajo en progreso. Termínalo antes de tomar otro.")
 
@@ -876,12 +910,12 @@ def asignar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: 
 
 # Pantalla Taller: Marcar trabajo como completado
 @app.post("/taller/completar/{orden_id}")
-def completar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
+def completar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_taller_access)):
     orden = db.query(models.OrdenTrabajo).filter(models.OrdenTrabajo.id == orden_id).first()
     if not orden:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     
-    if orden.mecanico_id != current_user.id and current_user.rol != "admin":
+    if orden.mecanico_id != current_user.id and current_user.rol not in ["admin", "jefe_pista"]:
         raise HTTPException(status_code=403, detail="No puedes completar un trabajo asignado a otro mecánico")
 
     orden.fin_trabajo = datetime.now(timezone.utc)
@@ -891,11 +925,13 @@ def completar_trabajo(orden_id: int, db: Session = Depends(get_db), current_user
 
 # Pantalla Taller: Listar Trabajos Pendientes
 @app.get("/taller/pendientes")
-def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_mecanico_or_admin)):
-    query = db.query(models.OrdenTrabajo, models.Cliente, models.Vehiculo).outerjoin(
+def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = Depends(check_taller_access)):
+    query = db.query(models.OrdenTrabajo, models.Cliente, models.Vehiculo, models.Usuario.username).outerjoin(
         models.Cliente, models.OrdenTrabajo.cliente_id == models.Cliente.id
     ).outerjoin(
         models.Vehiculo, models.OrdenTrabajo.vehiculo_id == models.Vehiculo.id
+    ).outerjoin(
+        models.Usuario, models.OrdenTrabajo.mecanico_id == models.Usuario.id
     ).filter(
         models.OrdenTrabajo.taller_completado == False, 
         models.OrdenTrabajo.tipo == "Orden",
@@ -912,5 +948,6 @@ def listar_taller(db: Session = Depends(get_db), current_user: models.Usuario = 
         "fecha": o.fecha,
         "estado_pago": o.estado,
         "mecanico_id": o.mecanico_id,
+        "mecanico_nombre": u_name if u_name else "No asignado",
         "inicio_trabajo": o.inicio_trabajo
-    } for o, c, v in query]
+    } for o, c, v, u_name in query]
