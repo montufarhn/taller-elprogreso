@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MULTI SERVICIOS FLORES S. DE R. L.</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -35,7 +36,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 p-8">
+<body class="bg-gray-100 p-4 sm:p-8">
     <!-- Sección de Login -->
     <div id="login-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
         <h2 class="text-3xl font-bold mb-6 text-center text-blue-800">MULTISERVICIOS FLORES S. DE R. L.</h2>
@@ -57,16 +58,16 @@
                 </div>
                 <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition font-bold border border-red-200">Cerrar Sesión</button>
             </div>
-            <nav class="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-                <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Facturas / Cotizaciones</button>
-                <button id="nav-taller" onclick="switchTab('tab-taller')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Pantalla Taller</button>
-                <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Clientes</button>
-                <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Inventario</button>
-                <button id="nav-reportes" onclick="switchTab('tab-reportes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Reportes</button>
-                <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Rendimiento</button>
-                <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Usuarios de Sistema</button>
-                <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors">Datos del Negocio</button>
-                <button id="nav-actualizaciones" onclick="switchTab('tab-actualizaciones')" class="text-gray-500 hover:text-blue-600 font-bold transition-colors">✨ Novedades</button>
+            <nav class="mt-4 flex flex-wrap gap-2">
+                <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Facturas / Cotizaciones</button>
+                <button id="nav-taller" onclick="switchTab('tab-taller')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Pantalla Taller</button>
+                <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Clientes</button>
+                <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Inventario</button>
+                <button id="nav-reportes" onclick="switchTab('tab-reportes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Reportes</button>
+                <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Rendimiento</button>
+                <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Usuarios de Sistema</button>
+                <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Datos del Negocio</button>
+                <button id="nav-actualizaciones" onclick="switchTab('tab-actualizaciones')" class="text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">✨ Novedades</button>
             </nav>
         </div>
 
@@ -368,7 +369,7 @@
                         <input id="input-comprobante" type="file" accept="image/*" class="w-full p-1 border rounded text-xs">
                     </div>
                 </div>
-                <div id="print-payment-info" class="hidden text-sm border-t pt-2 mt-2">
+                <div id="print-payment-info" class="hidden text-sm border-t pt-2 mt-2 print:block">
                     <p><strong>Pago:</strong> <span id="print-metodo"></span> <span id="print-ref-span"></span></p>
                 </div>
             </div>
@@ -415,7 +416,7 @@
                     <input id="edit-cli-dir" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
             </div>
-            <div class="flex gap-2 mt-6">
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
                 <button onclick="document.getElementById('modal-cliente').classList.add('hidden')" 
                     class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold hover:bg-gray-300 transition">Cancelar</button>
                 <button onclick="guardarEdicionCliente()" 
@@ -450,7 +451,7 @@
                     <input id="edit-inv-existencia" type="number" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
             </div>
-            <div class="flex gap-2 mt-6">
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
                 <button onclick="document.getElementById('modal-inventario').classList.add('hidden')" 
                     class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold hover:bg-gray-300 transition">Cancelar</button>
                 <button onclick="guardarEdicionItem()" 
@@ -475,7 +476,7 @@
                     <input id="compra-costo" type="number" step="0.01" placeholder="Ej: 500.00" class="w-full p-2 border rounded focus:ring-2 focus:ring-green-500 outline-none">
                 </div>
             </div>
-            <div class="flex gap-2 mt-6">
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
                 <button onclick="document.getElementById('modal-compra-stock').classList.add('hidden')" 
                     class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold">Cancelar</button>
                 <button onclick="confirmarCompraStock()" 
@@ -508,7 +509,7 @@
                     <input id="edit-user-pass" type="password" placeholder="Dejar en blanco para no cambiar" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
             </div>
-            <div class="flex gap-2 mt-6">
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
                 <button onclick="document.getElementById('modal-usuario').classList.add('hidden')" 
                     class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold hover:bg-gray-300 transition">Cancelar</button>
                 <button onclick="guardarEdicionUsuario()" 
