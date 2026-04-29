@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MULTI SERVICIOS FLORES S. DE R. L.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body > * { display: none !important; }
+            #modal-factura { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; background: white !important; z-index: 9999 !important; }
+            #modal-factura .bg-white { box-shadow: none !important; width: 100% !important; max-width: none !important; border: none !important; }
+            #modal-factura h2, #modal-factura button, #modal-factura select, #modal-factura input { display: none !important; }
+            #modal-factura .flex.gap-2, #modal-factura #btn-anular-factura-modal { display: none !important; }
+            #metodo-pago-section { border: none !important; padding: 0 !important; }
+            #print-payment-info { display: block !important; }
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 5rem;
+            color: rgba(220, 38, 38, 0.25);
+            font-weight: 900;
+            pointer-events: none;
+            z-index: 50;
+            white-space: nowrap;
+            border: 10px solid rgba(220, 38, 38, 0.25);
+            padding: 10px 20px;
+            text-transform: uppercase;
+        }
+        .watermark-quote {
+            color: rgba(147, 51, 234, 0.15);
+            border-color: rgba(147, 51, 234, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+    <!-- Sección de Login -->
+    <div id="login-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
+        <h2 class="text-3xl font-bold mb-6 text-center text-blue-800">MULTISERVICIOS FLORES S. DE R. L.</h2>
+        <div class="space-y-4">
+            <input id="user" type="text" placeholder="Usuario" class="w-full p-3 border rounded">
+            <input id="pass" type="password" placeholder="Contraseña" class="w-full p-3 border rounded">
+            <button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700">Entrar</button>
+        </div>
+    </div>
+
+    <!-- Panel Principal (Oculto al inicio) -->
+    <div id="dashboard" class="hidden max-w-5xl mx-auto">
+        <!-- Encabezado y Navegación Principal -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8 border-t-4 border-blue-600">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pb-4 border-b">
+                <div class="flex items-center gap-4">
+                    <img id="logo-nav" src="" class="h-16 w-auto hidden rounded shadow-sm border p-1 bg-white">
+                    <h1 class="text-2xl font-bold text-gray-800">Bienvenido: <span id="display-user" class="text-blue-600"></span></h1>
+                </div>
+                <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition font-bold border border-red-200">Cerrar Sesión</button>
+            </div>
+            <nav class="mt-4 flex flex-wrap gap-2">
+                <button id="nav-documentos" onclick="switchTab('tab-documentos')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Facturas / Cotizaciones</button>
+                <button id="nav-taller" onclick="switchTab('tab-taller')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Pantalla Taller</button>
+                <button id="nav-clientes" onclick="switchTab('tab-clientes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Clientes</button>
+                <button id="nav-catalogo" onclick="switchTab('tab-catalogo')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Inventario</button>
+                <button id="nav-reportes" onclick="switchTab('tab-reportes')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Reportes</button>
+                <button id="nav-rendimiento" onclick="switchTab('tab-rendimiento')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Rendimiento</button>
+                <button id="nav-usuarios" onclick="switchTab('tab-usuarios')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Usuarios de Sistema</button>
+                <button id="nav-negocio" onclick="switchTab('tab-negocio')" class="hidden text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">Datos del Negocio</button>
+                <button id="nav-actualizaciones" onclick="switchTab('tab-actualizaciones')" class="text-gray-500 hover:text-blue-600 font-bold transition-colors bg-gray-50 px-3 py-2 rounded-md border md:bg-transparent md:border-none">✨ Novedades</button>
+            </nav>
+        </div>
+
+        <!-- Nueva Sección: Facturas / Cotizaciones -->
+        <div id="tab-documentos" class="tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Panel Jefe de Pista -->
+            <div id="panel-jefe" class="hidden bg-white p-6 rounded-xl shadow-md">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-green-700">Nueva Orden / Cotización</h3>
+                <div class="space-y-2 mb-4">
+                    <div class="relative">
+                        <input id="nombre" type="text" placeholder="Nombre del Cliente" class="w-full p-2 border rounded" autocomplete="off" oninput="buscarClienteAutocomplete()">
+                        <div id="autocomplete-list" class="absolute z-10 w-full bg-white border rounded shadow-lg hidden max-h-48 overflow-y-auto"></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="identidad" type="text" placeholder="RTN o DNI (Opcional)" class="w-2/3 p-2 border rounded">
+                        <input id="tel" type="text" placeholder="Teléfono" class="w-1/3 p-2 border rounded">
+                    </div>
+                    <input id="dir" type="text" placeholder="Dirección (Opcional)" class="w-full p-2 border rounded">
+                    <div class="grid grid-cols-2 gap-2 mt-2 p-2 bg-blue-50 rounded border border-blue-100">
+                        <input id="v-placa" type="text" placeholder="Placa (Opcional)" class="p-2 border rounded text-sm uppercase">
+                        <input id="v-marca" type="text" placeholder="Marca (Ej: Toyota)" class="p-2 border rounded text-sm">
+                        <input id="v-modelo" type="text" placeholder="Modelo (Ej: Hilux)" class="p-2 border rounded text-sm">
+                        <div class="flex gap-1">
+                            <input id="v-anio" type="number" placeholder="Año" class="w-1/2 p-2 border rounded text-sm">
+                            <input id="v-color" type="text" placeholder="Color" class="w-1/2 p-2 border rounded text-sm">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-[10px] font-bold text-blue-600 uppercase ml-1">Asignar Mecánico de Preferencia</label>
+                            <select id="select-mecanico-asignado" class="w-full p-2 border rounded text-sm bg-white"></select>
+                        </div>
+                        <select id="cliente-vehiculos" class="w-full p-2 border rounded mt-2 hidden" onchange="seleccionarVehiculoCliente()">
+                            <option value="">-- Seleccione un vehículo registrado --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="border-t pt-4">
+                    <h4 class="font-bold mb-2">Servicios / Productos</h4>
+                    <select id="select-catalogo" class="w-full p-2 border rounded mb-2" onchange="agregarItemOrden()">
+                        <option value="">-- Seleccionar del Catálogo --</option>
+                    </select>
+                    <div id="items-orden" class="space-y-2 mb-4">
+                        <!-- Items agregados aparecerán aquí -->
+                    </div>
+                    <div class="mb-2 flex items-center justify-end gap-2 pr-2">
+                        <label class="text-xs font-bold text-purple-600 uppercase">¿Aplicar Descuento?</label>
+                        <input id="descuento-input" type="number" min="0" max="100" value="0" 
+                            class="w-16 p-1 border rounded text-center text-sm focus:ring-1 focus:ring-purple-400 outline-none" oninput="renderItemsOrden()">
+                        <span class="text-xs font-bold text-gray-500">%</span>
+                    </div>
+                    <div class="flex justify-between items-center font-bold text-lg p-2 bg-gray-50 rounded">
+                        <span>Total:</span>
+                        <span>Lps. <span id="total-orden">0.00</span></span>
+                    </div>
+                </div>
+                <button onclick="enviarOrden('Orden')" class="w-full mt-4 bg-blue-600 text-white p-2 rounded font-bold">Enviar a Caja</button>
+                <button onclick="enviarOrden('Cotizacion')" class="w-full mt-2 bg-gray-500 text-white p-2 rounded">Generar Cotización</button>
+            </div>
+
+            <!-- Panel Cajero -->
+            <div id="panel-cajero" class="hidden bg-white p-6 rounded-xl shadow-md">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-blue-700">Caja: Cobros Pendientes</h3>
+                <input id="search-cobro" type="text" placeholder="Buscar por Nombre o RTN..." 
+                    class="w-full mb-4 p-2 border rounded" oninput="filtrarCobros()">
+                <div id="lista-cobros" class="space-y-2">
+                    <!-- Se llena con JS -->
+                </div>
+            </div>
+
+            <!-- Panel Cotizaciones -->
+            <div id="panel-cotizaciones" class="hidden bg-white p-6 rounded-xl shadow-md">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-purple-700">Cotizaciones Generadas</h3>
+                <div id="lista-cotizaciones" class="space-y-2">
+                    <!-- Se llena con JS -->
+                </div>
+            </div>
+
+            <!-- Panel Historial (Solo Admin) -->
+            <div id="panel-historial" class="hidden bg-white p-6 rounded-xl shadow-md col-span-1 lg:col-span-2">
+                <h3 class="font-bold text-xl mb-4 border-b pb-2 text-red-700">Admin: Historial de Facturas Pagadas</h3>
+                <input id="search-pagada" type="text" placeholder="Buscar por Nombre o RTN..." 
+                    class="w-full mb-4 p-2 border rounded" oninput="filtrarPagadas()">
+                <div id="lista-pagadas" class="space-y-2">
+                    <!-- Se llena con JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Nueva Sección: Pantalla Taller -->
+        <div id="tab-taller" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2 text-orange-700">Vehículos en Espera (Taller)</h3>
+            <div id="lista-taller" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Se llena con JS -->
+            </div>
+        </div>
+
+        <!-- Sección: Usuarios de Sistema (Antes Taller) -->
+        <div id="tab-usuarios" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2 text-blue-800">Administración de Usuarios</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
+                <input id="new-user" type="text" placeholder="Usuario" class="p-2 border rounded">
+                <input id="new-pass" type="password" placeholder="Contraseña" class="p-2 border rounded">
+                <select id="new-rol" class="p-2 border rounded">
+                    <option value="jefe_pista">Jefe de Pista</option>
+                    <option value="cajero">Cajero</option>
+                    <option value="mecanico">Mecánico</option>
+                    <option value="admin">Administrador</option>
+                </select>
+                <button onclick="crearUsuario()" class="bg-blue-600 text-white p-2 rounded">Crear Usuario</button>
+            </div>
+            <div id="lista-usuarios" class="space-y-2"></div>
+        </div>
+
+        <!-- Panel Datos del Negocio (Solo Admin) -->
+        <div id="tab-negocio" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2 text-blue-800">Datos Fiscales del Negocio (SAR)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nombre del Negocio</label>
+                    <input id="biz-nombre" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">RTN del Negocio</label>
+                    <input id="biz-rtn" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Teléfono</label>
+                    <input id="biz-tel" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Dirección Física</label>
+                    <input id="biz-dir" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">CAI</label>
+                    <input id="biz-cai" type="text" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Rango Autorizado (Desde)</label>
+                    <input id="biz-desde" type="text" class="w-full p-2 border rounded" placeholder="Ej: 000-001-01-00000001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Número inicial de factura</label>
+                    <input id="biz-numero-inicio" type="number" min="1" class="w-full p-2 border rounded" placeholder="Ej: 1">
+                    <p class="text-xs text-gray-500 mt-1">Si completa este campo se actualizará automáticamente el sufijo de rango autorizado "Desde".</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Rango Autorizado (Hasta)</label>
+                    <input id="biz-hasta" type="text" class="w-full p-2 border rounded" placeholder="Ej: 000-001-01-00000999">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fecha Límite de Emisión</label>
+                    <input id="biz-limite" type="date" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Logo del Negocio</label>
+                    <input id="biz-logo" type="file" accept="image/*" class="w-full p-2 border rounded">
+                </div>
+            </div>
+            <button onclick="actualizarDatosNegocio()" class="mt-4 bg-blue-600 text-white p-2 px-4 rounded font-bold hover:bg-blue-700 transition">Guardar Datos Fiscales</button>
+        </div>
+
+        <!-- Módulo de Reportes -->
+        <div id="tab-reportes" class="tab-content hidden space-y-6">
+            <div class="bg-white p-4 rounded-xl shadow-md flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Desde</label>
+                    <input id="rep-desde" type="date" class="p-2 border rounded text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Hasta</label>
+                    <input id="rep-hasta" type="date" class="p-2 border rounded text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button onclick="cargarBalances()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Filtrar</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="exportarReporte('csv')" class="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-green-700">Exportar CSV</button>
+                    <button onclick="exportarReporte('xml')" class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-purple-700">Exportar XML</button>
+                    <button onclick="exportarReporte('json')" class="bg-orange-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-orange-700">Exportar JSON</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="font-bold text-xl mb-4 text-green-700 border-b pb-2">Ingresos (Ventas)</h3>
+                    <div id="lista-reporte-ingresos" class="space-y-2 max-h-96 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="font-bold text-xl mb-4 text-red-700 border-b pb-2">Egresos (Compras/Gastos)</h3>
+                    <div id="lista-reporte-egresos" class="space-y-2 max-h-96 overflow-y-auto"></div>
+                </div>
+            </div>
+            <div class="bg-blue-800 text-white p-6 rounded-xl shadow-lg flex justify-between items-center">
+                <h3 class="text-2xl font-bold">Balance Total</h3>
+                <div class="text-right">
+                    <p id="total-ingresos-label" class="text-green-300">Ingresos: Lps. 0.00</p>
+                    <p id="total-egresos-label" class="text-red-300">Egresos: Lps. 0.00</p>
+                    <p id="balance-final-label" class="text-3xl font-black mt-2">Utilidad: Lps. 0.00</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nueva Sección: Rendimiento de Mecánicos -->
+        <div id="tab-rendimiento" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-xl mb-4 text-blue-700 border-b pb-2">Rendimiento de Mecánicos (Eficiencia)</h3>
+            <div id="lista-reporte-rendimiento" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Panel Inventario -->
+        <div id="tab-catalogo" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-2xl mb-6 text-blue-800 border-b pb-2">Gestión de Inventario</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
+                <input id="cat-nombre" type="text" placeholder="Nombre Item" class="p-2 border rounded">
+                <input id="cat-precio" type="number" placeholder="Precio" class="p-2 border rounded">
+                <select id="cat-tipo" class="p-2 border rounded">
+                    <option value="Producto">Producto</option>
+                    <option value="Mano de Obra">Mano de Obra</option>
+                </select>
+                <button onclick="crearItemCatalogo()" class="bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Agregar Item</button>
+            </div>
+            <div id="lista-catalogo" class="space-y-2"></div>
+        </div>
+
+        <!-- Sección: Notas de Versión -->
+        <div id="tab-actualizaciones" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-2xl mb-6 text-blue-800 border-b pb-2">Historial de Actualizaciones</h3>
+            <div id="lista-notas-version" class="space-y-6 border-l-2 border-blue-100 ml-4 pl-6">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Panel Gestión de Clientes (Sección Aparte) -->
+        <div id="tab-clientes" class="tab-content hidden bg-white p-6 rounded-xl shadow-md">
+            <h3 class="font-bold text-2xl mb-6 text-blue-800 border-b pb-2">Gestión de Clientes</h3>
+            
+            <!-- Nuevo Formulario para crear clientes -->
+            <div id="form-registro-cliente" class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+                <h4 class="font-bold mb-3 text-gray-700">Registrar Nuevo Cliente</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                    <input id="reg-nombre" type="text" placeholder="Nombre completo" class="p-2 border rounded">
+                    <input id="reg-identidad" type="text" placeholder="RTN o DNI" class="p-2 border rounded">
+                    <input id="reg-tel" type="text" placeholder="Teléfono" class="p-2 border rounded">
+                    <input id="reg-dir" type="text" placeholder="Dirección" class="p-2 border rounded">
+                </div>
+                <button onclick="crearClienteDirecto()" class="mt-3 bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">Guardar Cliente</button>
+            </div>
+
+            <hr class="mb-6">
+            <input id="search-cliente" type="text" placeholder="Buscar por nombre o RTN..." class="w-full mb-4 p-2 border rounded" oninput="filtrarClientes()">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="p-3 border w-1/3">Nombre</th>
+                            <th class="p-3 border w-1/4">RTN/DNI</th>
+                            <th class="p-3 border w-1/4">Teléfono</th>
+                            <th class="p-3 border w-auto text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-clientes-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Factura Detallada (Oculto) -->
+    <div id="modal-factura" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-2xl font-bold text-gray-800">Detalle del Documento</h2>
+                <button onclick="toggleEditarFactura()" class="text-blue-600 text-sm font-bold hover:underline">📝 Editar Datos</button>
+            </div>
+            
+            <div id="factura-content" class="space-y-4 mb-6 relative">
+                <!-- Contenido dinámico de la factura -->
+            </div>
+
+            <!-- Editor de datos de factura (Sección que faltaba y causaba el error) -->
+            <div id="edit-factura-section" class="hidden bg-yellow-50 p-4 border border-yellow-200 rounded mb-4 space-y-2">
+                <h4 class="font-bold text-yellow-800 text-sm text-center uppercase">Editar Datos de Facturación</h4>
+                <input id="edit-factura-nombre" type="text" placeholder="Nombre Factura" class="w-full p-2 border rounded text-sm">
+                <input id="edit-factura-identidad" type="text" placeholder="RTN o DNI" class="w-full p-2 border rounded text-sm">
+                <button onclick="guardarCambiosFactura()" class="w-full bg-yellow-600 text-white p-2 rounded text-sm font-bold hover:bg-yellow-700">Aplicar Cambios</button>
+            </div>
+
+            <!-- Sección de Pago -->
+            <div id="metodo-pago-section" class="mt-4 p-3 bg-gray-50 rounded border mb-4">
+                <label class="block font-bold mb-1 text-sm text-gray-700">Método de Pago:</label>
+                <select id="select-metodo" class="w-full p-2 border rounded mb-2 text-sm" onchange="toggleReferencia()">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta">Tarjeta de Crédito/Débito (POS)</option>
+                    <option value="Transferencia">Transferencia Bancaria</option>
+                </select>
+                <div id="pos-referencia" class="hidden space-y-2">
+                    <label id="label-referencia" class="block font-bold text-sm text-gray-700">Referencia:</label>
+                    <input id="input-referencia" type="text" placeholder="Número de confirmación" class="w-full p-2 border rounded text-sm">
+                    
+                    <div id="transfer-upload-section" class="hidden">
+                        <label class="block font-bold text-sm text-gray-700">Comprobante (Opcional):</label>
+                        <input id="input-comprobante" type="file" accept="image/*" class="w-full p-1 border rounded text-xs">
+                    </div>
+                </div>
+                <div id="print-payment-info" class="hidden text-sm border-t pt-2 mt-2 print:block">
+                    <p><strong>Pago:</strong> <span id="print-metodo"></span> <span id="print-ref-span"></span></p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modal-factura').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg font-bold">Cancelar</button>
+                <button id="btn-confirmar-cobro" 
+                    class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 text-lg">Confirmar Pago</button>
+                <button id="btn-convertir-factura" 
+                    class="hidden flex-1 bg-purple-600 text-white p-3 rounded-lg font-bold hover:bg-purple-700 text-lg">Enviar a Caja</button>
+                <button id="btn-imprimir-copia" onclick="window.print()" 
+                    class="hidden flex-1 bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 text-lg">Imprimir Copia</button>
+            </div>
+            <!-- Nueva Sección: Asignación de mecánico desde el modal para Admin/Jefe -->
+            <div id="modal-asignar-mecanico" class="hidden mt-4 p-3 bg-blue-50 border border-blue-100 rounded">
+                <label class="block text-xs font-bold text-blue-600 uppercase mb-1">Control de Taller: Asignar Mecánico</label>
+                <select id="select-mecanico-modal" class="w-full p-2 border rounded text-sm bg-white" onchange="asignarMecanicoDesdeModal()"></select>
+            </div>
+            <button id="btn-anular-factura-modal" 
+                class="w-full mt-2 text-red-600 text-sm font-bold underline">Anular esta factura</button>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Cliente (Oculto) -->
+    <div id="modal-cliente" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Editar Cliente</h2>
+            <input type="hidden" id="edit-cli-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Nombre Completo</label>
+                    <input id="edit-cli-nombre" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">RTN o DNI</label>
+                    <input id="edit-cli-identidad" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Teléfono</label>
+                    <input id="edit-cli-tel" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Dirección</label>
+                    <input id="edit-cli-dir" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
+                <button onclick="document.getElementById('modal-cliente').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold hover:bg-gray-300 transition">Cancelar</button>
+                <button onclick="guardarEdicionCliente()" 
+                    class="flex-1 bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700 transition">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Inventario (Oculto) -->
+    <div id="modal-inventario" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Editar Item de Inventario</h2>
+            <input type="hidden" id="edit-inv-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Nombre del Item</label>
+                    <input id="edit-inv-nombre" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Precio (Lps.)</label>
+                    <input id="edit-inv-precio" type="number" step="0.01" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Tipo</label>
+                    <select id="edit-inv-tipo" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Producto">Producto</option>
+                        <option value="Mano de Obra">Mano de Obra</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Existencia Actual</label>
+                    <input id="edit-inv-existencia" type="number" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
+                <button onclick="document.getElementById('modal-inventario').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold hover:bg-gray-300 transition">Cancelar</button>
+                <button onclick="guardarEdicionItem()" 
+                    class="flex-1 bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700 transition">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Ingreso de Compra (Oculto) -->
+    <div id="modal-compra-stock" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-2 border-b pb-2 text-green-700">Ingresar Compra</h2>
+            <p id="compra-nombre-display" class="text-sm text-gray-600 mb-4 italic font-medium"></p>
+            <input type="hidden" id="compra-inv-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Cantidad Unidades</label>
+                    <input id="compra-cantidad" type="number" placeholder="Ej: 10" class="w-full p-2 border rounded focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Costo Total de la Compra</label>
+                    <input id="compra-costo" type="number" step="0.01" placeholder="Ej: 500.00" class="w-full p-2 border rounded focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
+                <button onclick="document.getElementById('modal-compra-stock').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold">Cancelar</button>
+                <button onclick="confirmarCompraStock()" 
+                    class="flex-1 bg-green-600 text-white p-2 rounded font-bold hover:bg-green-700">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Usuario (Oculto) -->
+    <div id="modal-usuario" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Editar Usuario de Sistema</h2>
+            <input type="hidden" id="edit-user-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Nombre de Usuario</label>
+                    <input id="edit-user-name" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Rol en el Sistema</label>
+                    <select id="edit-user-rol" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="jefe_pista">Jefe de Pista</option>
+                        <option value="cajero">Cajero</option>
+                        <option value="mecanico">Mecánico</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 font-bold">Nueva Contraseña (Opcional)</label>
+                    <input id="edit-user-pass" type="password" placeholder="Dejar en blanco para no cambiar" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mt-6">
+                <button onclick="document.getElementById('modal-usuario').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold hover:bg-gray-300 transition">Cancelar</button>
+                <button onclick="guardarEdicionUsuario()" 
+                    class="flex-1 bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700 transition">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Anulación (Oculto) -->
+    <div id="modal-anular" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">¿Anular Documento?</h2>
+            <p class="text-gray-600 mb-6">Esta acción es irreversible. El registro quedará como anulado y no se podrá realizar el cobro.</p>
+            <input type="hidden" id="anular-id-hidden">
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modal-anular').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold">No, Volver</button>
+                <button onclick="confirmarAnulacion()" 
+                    class="flex-1 bg-red-600 text-white p-2 rounded font-bold hover:bg-red-700">Sí, Anular</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Alerta Genérico (Información/Error) -->
+    <div id="modal-alerta" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div id="alerta-icono" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+            <h2 id="alerta-titulo" class="text-xl font-bold text-gray-800 mb-2"></h2>
+            <p id="alerta-mensaje" class="text-gray-600 mb-6"></p>
+            <button onclick="document.getElementById('modal-alerta').classList.add('hidden')" 
+                class="w-full p-2 rounded font-bold text-white transition-colors" id="alerta-btn">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación Genérico -->
+    <div id="modal-confirm" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h2 id="confirm-titulo" class="text-xl font-bold text-gray-800 mb-2">¿Está seguro?</h2>
+            <p id="confirm-mensaje" class="text-gray-600 mb-6"></p>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modal-confirm').classList.add('hidden')" 
+                    class="flex-1 bg-gray-200 text-gray-800 p-2 rounded font-bold">Cancelar</button>
+                <button id="confirm-btn-proceder" class="flex-1 bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">Proceder</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let cacheClientes = [];
+        let cacheCatalogo = [];
+        let cacheMecanicos = [];
+        let itemsSeleccionados = [];
+        let selectedClienteId = null;
+        let cacheVehiculosCliente = [];
+        let cacheCobros = [];
+        let cacheCotizaciones = [];
+        let cachePagadas = [];
+        let cacheIngresosReporte = [];
+        let cacheEgresosReporte = [];
+        let cacheNegocio = null;
+        let currentEditingOrderId = null;
+        const IVA_RATE = 0.15;
+
+        function calcularImpuesto(total) {
+            const base = total / (1 + IVA_RATE);
+            const iva = total - base;
+            return { base, iva, total };
+        }
+
+        // Al cargar la página, verificar si hay sesión guardada
+        window.onload = () => {
+            const savedUser = localStorage.getItem('taller_session');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+            }
+            
+            // Cargar borradores de formularios
+            document.getElementById('nombre').value = localStorage.getItem('draft_nombre') || '';
+            document.getElementById('identidad').value = localStorage.getItem('draft_identidad') || '';
+            
+            // Guardar borradores automáticamente
+            document.getElementById('nombre').addEventListener('input', (e) => localStorage.setItem('draft_nombre', e.target.value));
+            document.getElementById('identidad').addEventListener('input', (e) => localStorage.setItem('draft_identidad', e.target.value));
+
+            // Cerrar autocompletado al hacer clic fuera
+            document.addEventListener('click', (e) => {
+                const list = document.getElementById('autocomplete-list');
+                const input = document.getElementById('nombre');
+                if (list && input && !input.contains(e.target) && !list.contains(e.target)) {
+                    list.classList.add('hidden');
+                }
+            });
+        };
+
+        // Detecta automáticamente la URL del servidor. 
+        // Si se abre como archivo local, cae de vuelta a la IP por defecto del servidor.
+        const API_BASE_URL = (window.location.origin === "null" || window.location.protocol === "file:") 
+            ? "http://127.0.0.1:8000" 
+            : window.location.origin;
+
+        async function login() {
+            const params = new URLSearchParams();
+            params.append('username', document.getElementById('user').value);
+            params.append('password', document.getElementById('pass').value);
+
+            const resp = await apiRequest(`${API_BASE_URL}/token`, { 
+                method: 'POST', 
+                body: params 
+            });
+            
+            if (!resp) return;
+
+            if (resp.ok) {
+                currentUser = await resp.json();
+                localStorage.setItem('taller_session', JSON.stringify(currentUser));
+                showDashboard();
+            } else {
+                mostrarAlerta("Error de Acceso", "Usuario o contraseña incorrectos", "error");
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            if(tabId === 'tab-clientes') cargarClientesFull();
+            if(tabId === 'tab-catalogo') cargarCatalogo();
+            if(tabId === 'tab-reportes') cargarBalances();
+            if(tabId === 'tab-rendimiento') cargarRendimiento();
+            if(tabId === 'tab-documentos') cargarDocumentosRelacionados();
+            if(tabId === 'tab-documentos' && (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista')) cargarMecanicos();
+            if(tabId === 'tab-taller') cargarTaller();
+            if(tabId === 'tab-usuarios' && currentUser.rol === 'admin') cargarUsuarios();
+            if(tabId === 'tab-negocio' && currentUser.rol === 'admin') cargarDatosNegocio();
+            if(tabId === 'tab-actualizaciones') cargarNotasVersion();
+        }
+
+        function showDashboard() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('display-user').innerText = `${currentUser.rol.toUpperCase()}`;
+            document.title = `Panel ${currentUser.rol.toUpperCase().replace('_', ' ')} - MULTISERVICIOS FLORES S. DE R. L.`;
+
+            // Botones de navegación
+            if (currentUser.rol !== 'mecanico') {
+                document.getElementById('nav-documentos').classList.remove('hidden');
+            }
+
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') {
+                document.getElementById('nav-clientes').classList.remove('hidden');
+            }
+
+            if (currentUser.rol === 'admin') {
+                document.getElementById('nav-catalogo').classList.remove('hidden');
+                document.getElementById('nav-reportes').classList.remove('hidden');
+                document.getElementById('nav-rendimiento').classList.remove('hidden');
+                document.getElementById('nav-usuarios').classList.remove('hidden');
+                document.getElementById('nav-negocio').classList.remove('hidden');
+            }
+
+            // Paneles internos de Facturas / Cotizaciones
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') {
+                document.getElementById('panel-jefe').classList.remove('hidden');
+                document.getElementById('panel-cotizaciones').classList.remove('hidden');
+            }
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero' || currentUser.rol === 'jefe_pista') {
+                // Recarga automática de facturas y cotizaciones cada 10 segundos
+                cargarDocumentosRelacionados();
+                setInterval(cargarDocumentosRelacionados, 10000);
+            }
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') {
+                document.getElementById('panel-cajero').classList.remove('hidden');
+            }
+            if (currentUser.rol === 'admin') {
+                document.getElementById('panel-historial').classList.remove('hidden');
+            }
+            if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico' || currentUser.rol === 'jefe_pista') {
+                document.getElementById('nav-taller').classList.remove('hidden');
+                // Actualización automática para el taller cada 10 segundos
+                setInterval(cargarTaller, 10000);
+            }
+
+            // Abrir pestaña inicial según el rol
+            if (currentUser.rol === 'admin') switchTab('tab-usuarios');
+            else if (currentUser.rol === 'mecanico') switchTab('tab-taller');
+            else switchTab('tab-documentos');
+
+            // Cargar datos del negocio inmediatamente para tenerlos listos para facturación
+            cargarDatosNegocio();
+        }
+
+        function mostrarAlerta(titulo, mensaje, tipo = 'info') {
+            const modal = document.getElementById('modal-alerta');
+            const icono = document.getElementById('alerta-icono');
+            const tituloEl = document.getElementById('alerta-titulo');
+            const mensajeEl = document.getElementById('alerta-mensaje');
+            const btn = document.getElementById('alerta-btn');
+
+            tituloEl.innerText = titulo;
+            mensajeEl.innerText = mensaje;
+
+            if (tipo === 'error') {
+                icono.className = "w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4";
+                icono.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                btn.className = "w-full p-2 rounded font-bold text-white bg-red-600 hover:bg-red-700";
+            } else {
+                icono.className = "w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4";
+                icono.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                btn.className = "w-full p-2 rounded font-bold text-white bg-blue-600 hover:bg-blue-700";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function mostrarConfirmacion(titulo, mensaje, onConfirm) {
+            const modal = document.getElementById('modal-confirm');
+            document.getElementById('confirm-titulo').innerText = titulo;
+            document.getElementById('confirm-mensaje').innerText = mensaje;
+            const btn = document.getElementById('confirm-btn-proceder');
+            
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.onclick = () => {
+                modal.classList.add('hidden');
+                onConfirm();
+            };
+            modal.classList.remove('hidden');
+        }
+
+        function cargarDocumentosRelacionados() {
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') cargarCobros();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'mecanico') cargarTaller();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarCatalogo();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarClientesFull();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'cajero') cargarPagadas();
+            if (currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista') cargarCotizaciones();
+        }
+
+        // Envoltorio centralizado para peticiones API
+        async function apiRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                
+                // Si el servidor responde 401 (No autorizado/Sesión expirada)
+                if (response.status === 401) {
+                    logout();
+                    return null;
+                }
+                return response;
+            } catch (error) {
+                // Si fetch falla es porque el servidor no está funcionando o no hay red
+                console.error("Error de comunicación con el servidor:", error);
+                mostrarAlerta("Error de Conexión", "El servidor no responde. Por seguridad, la sesión se cerrará.", "error");
+                setTimeout(logout, 3000);
+                return null;
+            }
+        }
+
+        // Helpers para headers con token
+        function getHeaders() {
+            return {
+                'Authorization': `Bearer ${currentUser.access_token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function buscarClienteAutocomplete() {
+            const query = document.getElementById('nombre').value.toLowerCase();
+            const list = document.getElementById('autocomplete-list');
+            selectedClienteId = null; // Resetear ID si el usuario escribe manualmente
+            document.getElementById('cliente-vehiculos').classList.add('hidden');
+            
+            if (query.length < 2) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            const exactMatches = cacheClientes.filter(c => 
+                c.nombre.toLowerCase() === query ||
+                (c.rtn && c.rtn.toLowerCase() === query) ||
+                (c.dni && c.dni.toLowerCase() === query)
+            );
+
+            if (exactMatches.length === 1) {
+                seleccionarClienteAutoById(exactMatches[0].id);
+                list.classList.add('hidden');
+                return;
+            }
+
+            // Buscar por nombre o por RTN/DNI parcial
+            const filtrados = cacheClientes.filter(c => 
+                c.nombre.toLowerCase().includes(query) || 
+                (c.rtn && c.rtn.toLowerCase().includes(query)) ||
+                (c.dni && c.dni.toLowerCase().includes(query))
+            );
+            
+            if (filtrados.length > 0) {
+                list.innerHTML = filtrados.map(c => `
+                    <div onclick="seleccionarClienteAutoById(${c.id})" 
+                         class="p-2 hover:bg-gray-100 cursor-pointer border-b text-sm">
+                        <strong>${c.nombre}</strong> <span class="text-gray-500 text-xs">(${c.rtn || c.dni || 'Sin Identidad'})</span>
+                    </div>
+                `).join('');
+                list.classList.remove('hidden');
+            } else {
+                list.classList.add('hidden');
+            }
+        }
+
+        function seleccionarClienteAutoById(id) {
+            const cliente = cacheClientes.find(c => c.id == id);
+            if (!cliente) return;
+
+            selectedClienteId = cliente.id;
+            document.getElementById('nombre').value = cliente.nombre;
+            document.getElementById('identidad').value = cliente.rtn || cliente.dni || '';
+            document.getElementById('tel').value = cliente.telefono || '';
+            document.getElementById('dir').value = cliente.direccion || '';
+
+            // Actualizar borradores al seleccionar
+            localStorage.setItem('draft_nombre', cliente.nombre);
+            localStorage.setItem('draft_identidad', cliente.rtn || cliente.dni || '');
+
+            document.getElementById('autocomplete-list').classList.add('hidden');
+            cargarVehiculosCliente(cliente.id);
+        }
+
+        async function cargarCatalogo() {
+            const resp = await apiRequest(`${API_BASE_URL}/inventario/`, { headers: getHeaders() });
+            if (!resp) return;
+
+            cacheCatalogo = await resp.json();
+            const select = document.getElementById('select-catalogo');
+            select.innerHTML = '<option value="">-- Seleccionar del Catálogo --</option>' + 
+                cacheCatalogo.map(i => `<option value="${i.id}">${i.nombre} - Lps. ${i.precio}</option>`).join('');
+            
+            if(currentUser.rol === 'admin') renderCatalogoAdmin();
+        }
+
+        async function cargarMecanicos() {
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/mecanicos`, { headers: getHeaders() });
+            if (!resp) return;
+            cacheMecanicos = await resp.json();
+            const select = document.getElementById('select-mecanico-asignado');
+            if (select) {
+                select.innerHTML = '<option value="">-- Sin mecánico preferido (Cualquiera) --</option>' + 
+                    cacheMecanicos.map(m => `<option value="${m.id}">${m.username.toUpperCase()}</option>`).join('');
+            }
+        }
+
+        function cargarVehiculosCliente(clienteId) {
+            const select = document.getElementById('cliente-vehiculos');
+            select.classList.add('hidden');
+            select.innerHTML = '<option value="">-- Seleccione un vehículo registrado --</option>';
+            cacheVehiculosCliente = [];
+
+            if (!clienteId) return;
+            apiRequest(`${API_BASE_URL}/clientes/${clienteId}/vehiculos`, { headers: getHeaders() })
+                .then(resp => resp && resp.ok ? resp.json() : null)
+                .then(vehiculos => {
+                    if (!vehiculos || vehiculos.length === 0) return;
+                    cacheVehiculosCliente = vehiculos;
+                    vehiculos.forEach(v => {
+                        const option = document.createElement('option');
+                        option.value = v.id;
+                        option.textContent = `${v.placa || 'Sin placa'} ${v.marca || ''} ${v.modelo || ''}`.trim();
+                        option.dataset.placa = v.placa || '';
+                        option.dataset.marca = v.marca || '';
+                        option.dataset.modelo = v.modelo || '';
+                        option.dataset.anio = v.anio || '';
+                        option.dataset.color = v.color || '';
+                        select.appendChild(option);
+                    });
+                    select.classList.remove('hidden');
+                    if (vehiculos.length === 1) {
+                        select.selectedIndex = 1;
+                        seleccionarVehiculoCliente();
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function seleccionarVehiculoCliente() {
+            const select = document.getElementById('cliente-vehiculos');
+            const selected = select.options[select.selectedIndex];
+            if (!selected || !selected.value) return;
+
+            document.getElementById('v-placa').value = selected.dataset.placa || '';
+            document.getElementById('v-marca').value = selected.dataset.marca || '';
+            document.getElementById('v-modelo').value = selected.dataset.modelo || '';
+            document.getElementById('v-anio').value = selected.dataset.anio || '';
+            document.getElementById('v-color').value = selected.dataset.color || '';
+        }
+
+        function agregarItemOrden() {
+            const id = document.getElementById('select-catalogo').value;
+            if(!id) return;
+            const item = cacheCatalogo.find(i => i.id == id);
+            
+            // Verificar si el item ya existe en la orden para incrementar cantidad
+            const existingIndex = itemsSeleccionados.findIndex(i => i.id == id);
+            if (existingIndex > -1) {
+                itemsSeleccionados[existingIndex].cantidad += 1;
+            } else {
+                itemsSeleccionados.push({...item, cantidad: 1});
+            }
+            renderItemsOrden();
+        }
+
+        function actualizarCantidad(index, valor) {
+            const cant = parseInt(valor);
+            if (cant > 0) {
+                itemsSeleccionados[index].cantidad = cant;
+                renderItemsOrden();
+            }
+        }
+
+        function renderItemsOrden() {
+            const container = document.getElementById('items-orden');
+            let subtotal_items = 0;
+            container.innerHTML = itemsSeleccionados.map((item, index) => {
+                const subtotal = item.precio * item.cantidad;
+                subtotal_items += subtotal;
+                return `<div class="flex justify-between items-center bg-gray-100 p-2 rounded text-sm">
+                    <div class="flex flex-col">
+                        <span class="font-bold">${item.nombre}</span>
+                        <span class="text-xs text-gray-500">Lps. ${item.precio.toFixed(2)} c/u</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="1" value="${item.cantidad}" 
+                            class="w-12 p-1 border rounded text-center" 
+                            onchange="actualizarCantidad(${index}, this.value)">
+                        <span class="w-20 text-right font-medium">Lps. ${subtotal.toFixed(2)}</span>
+                        <button onclick="removerItem(${index})" class="text-red-500 ml-2 font-bold">×</button>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            const descPerc = parseFloat(document.getElementById('descuento-input').value) || 0;
+            const totalFinal = subtotal_items * (1 - (descPerc / 100));
+            
+            document.getElementById('total-orden').innerText = totalFinal.toFixed(2);
+        }
+
+        function removerItem(index) {
+            itemsSeleccionados.splice(index, 1);
+            renderItemsOrden();
+        }
+
+        async function enviarOrden(tipo) {
+            const clienteData = {
+                nombre: document.getElementById('nombre').value,
+                identidad: document.getElementById('identidad').value,
+                telefono: document.getElementById('tel').value,
+                direccion: document.getElementById('dir').value
+            };
+            if (tipo === 'Cotizacion') {
+                clienteData.identidad = '';
+            }
+            if(!clienteData.nombre || itemsSeleccionados.length === 0) return mostrarAlerta("Datos Incompletos", "Por favor, ingrese el nombre del cliente y al menos un servicio/producto.", "error");
+
+            // 1. Obtener ID del cliente (existente o nuevo)
+            let clienteId = selectedClienteId;
+            if (!clienteId) {
+                const exactMatch = cacheClientes.find(c => 
+                    c.nombre.toLowerCase() === clienteData.nombre.toLowerCase() || 
+                    (clienteData.identidad && (c.rtn === clienteData.identidad || c.dni === clienteData.identidad))
+                );
+                if (exactMatch) {
+                    clienteId = exactMatch.id;
+                    selectedClienteId = exactMatch.id;
+                    cargarVehiculosCliente(clienteId);
+                    document.getElementById('identidad').value = exactMatch.rtn || exactMatch.dni || '';
+                    document.getElementById('tel').value = exactMatch.telefono || '';
+                    document.getElementById('dir').value = exactMatch.direccion || '';
+                }
+            }
+
+            if (!clienteId) {
+                const respCli = await apiRequest(`${API_BASE_URL}/clientes/`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(clienteData)
+                });
+                if (!respCli) return;
+                
+                if (respCli.ok) {
+                    const cliJson = await respCli.json();
+                    clienteId = cliJson.id;
+                } else {
+                    try {
+                        const err = await respCli.json();
+                        return mostrarAlerta("Error al Registrar Cliente", err.detail || "Error desconocido al registrar el cliente.", "error");
+                    } catch (e) {
+                        console.error("Error servidor:", await respCli.text());
+                        return mostrarAlerta("Error de Servidor", "Error al registrar cliente. Verifique que los datos sean correctos.", "error");
+                    }
+                }
+            }
+
+            if(!clienteId) {
+                // Si el RTN ya existe, el backend dio error, pero para este flujo 
+                // necesitaríamos un buscador de clientes real. Por ahora alertamos.
+                return mostrarAlerta("Cliente Existente", "El cliente ya existe o el RTN está duplicado.", "error");
+            }
+
+            // 2. Crear Orden
+            const desc = itemsSeleccionados.map(i => `${i.cantidad}|${i.nombre}|${i.precio}`).join(";");
+            const total = parseFloat(document.getElementById('total-orden').innerText);
+            const discountPerc = parseFloat(document.getElementById('descuento-input').value) || 0;
+            
+            const requiereTaller = itemsSeleccionados.some(i => i.tipo === 'Mano de Obra');
+            const mecanicoId = document.getElementById('select-mecanico-asignado').value;
+            const placa = document.getElementById('v-placa').value;
+            const marca = document.getElementById('v-marca').value;
+            const modelo = document.getElementById('v-modelo').value;
+            const anio = document.getElementById('v-anio').value;
+            const color = document.getElementById('v-color').value;
+
+            const params = new URLSearchParams();
+            params.append('cliente_id', clienteId);
+            params.append('descripcion', desc);
+            params.append('total', total);
+            params.append('descuento', discountPerc);
+            params.append('factura_nombre', clienteData.nombre);
+            if (clienteData.identidad) params.append('factura_identidad', clienteData.identidad);
+            params.append('tipo', tipo);
+            if (placa) params.append('placa', placa);
+            if (marca) params.append('marca', marca);
+            if (modelo) params.append('modelo', modelo);
+            if (anio) params.append('anio', anio);
+            if (color) params.append('color', color);
+            params.append('requiere_taller', requiereTaller);
+            if (mecanicoId) params.append('mecanico_id', mecanicoId);
+
+            const respOrd = await apiRequest(`${API_BASE_URL}/ordenes/?${params.toString()}`, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+
+            if (!respOrd) return;
+
+            if(respOrd.ok) {
+                const ordenResult = await respOrd.json();
+                mostrarAlerta("Éxito", `${tipo} guardada exitosamente`, "info");
+
+                // Limpiar formulario y borradores
+                itemsSeleccionados = [];
+                renderItemsOrden();
+                ['v-placa', 'v-marca', 'v-modelo', 'v-anio', 'v-color', 'nombre', 'identidad', 'tel', 'dir'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.value = '';
+                });
+                document.getElementById('descuento-input').value = '0';
+                localStorage.removeItem('draft_nombre');
+                localStorage.removeItem('draft_identidad');
+                selectedClienteId = null;
+
+                // Actualizar las listas en segundo plano
+                cargarDocumentosRelacionados();
+
+                // Mostrar el documento (Cotización o Factura) inmediatamente para impresión
+                mostrarFactura(ordenResult.id, [ordenResult]);
+                return;
+            }
+
+            let errorMessage = "Error desconocido al crear la orden.";
+            try {
+                const errorData = await respOrd.json();
+                errorMessage = errorData.detail || errorData.message || errorMessage;
+            } catch (e) {
+                console.error("Error parseando respuesta de orden", e);
+            }
+            mostrarAlerta("Error al Crear Orden", errorMessage, "error");
+        }
+
+        async function crearItemCatalogo() {
+            const data = {
+                nombre: document.getElementById('cat-nombre').value,
+                precio: parseFloat(document.getElementById('cat-precio').value),
+                tipo: document.getElementById('cat-tipo').value
+            };
+            const resp = await apiRequest(`${API_BASE_URL}/inventario/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                mostrarAlerta("Éxito", "Item agregado correctamente", "info");
+                cargarCatalogo();
+            }
+        }
+
+        function renderCatalogoAdmin() {
+            const container = document.getElementById('lista-catalogo');
+            container.innerHTML = cacheCatalogo.map(i => `
+                <div class="flex justify-between items-center bg-gray-50 p-2 border rounded">
+                    <div class="flex flex-col">
+                        <span><strong>${i.nombre}</strong> <span class="text-xs">(${i.tipo})</span></span>
+                        <span class="${i.tipo === 'Producto' ? (i.existencia < 5 ? 'text-red-600 font-bold' : 'text-green-600') : 'text-gray-400'} text-xs">
+                            Existencia: ${i.tipo === 'Producto' ? i.existencia : '∞'}
+                        </span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="font-bold mr-4">Lps. ${i.precio}</span>
+                        ${i.tipo === 'Producto' ? `<button onclick="comprarStock(${i.id}, '${i.nombre}')" class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">Ingresar Compra</button>` : ''}
+                        <button onclick="editarItemCatalogo(${i.id}, '${i.nombre}', ${i.precio}, '${i.tipo}', ${i.existencia})" class="text-blue-600 text-xs font-bold hover:underline">Editar</button>
+                        <button onclick="eliminarCatalogo(${i.id})" class="text-red-500 text-xs">Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function comprarStock(id, nombre) {
+            document.getElementById('compra-inv-id').value = id;
+            document.getElementById('compra-nombre-display').innerText = `Item: ${nombre}`;
+            document.getElementById('compra-cantidad').value = '';
+            document.getElementById('compra-costo').value = '';
+            document.getElementById('modal-compra-stock').classList.remove('hidden');
+        }
+
+        async function confirmarCompraStock() {
+            const id = document.getElementById('compra-inv-id').value;
+            const cant = document.getElementById('compra-cantidad').value;
+            const costo = document.getElementById('compra-costo').value;
+            
+            if (!cant || !costo) return mostrarAlerta("Datos Incompletos", "Por favor complete todos los campos de cantidad y costo.", "error");
+
+            const params = new URLSearchParams({ item_id: id, cantidad: cant, costo_total: costo });
+            const resp = await apiRequest(`${API_BASE_URL}/inventario/comprar?${params.toString()}`, { 
+                method: 'POST', 
+                headers: getHeaders() 
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Inventario actualizado correctamente", "info");
+                document.getElementById('modal-compra-stock').classList.add('hidden');
+                cargarCatalogo();
+            }
+        }
+
+        async function eliminarCatalogo(id) {
+            await apiRequest(`${API_BASE_URL}/catalogo/${id}`, { method: 'DELETE', headers: getHeaders() });
+            cargarCatalogo();
+        }
+
+        async function crearClienteDirecto() {
+            const data = {
+                nombre: document.getElementById('reg-nombre').value,
+                identidad: document.getElementById('reg-identidad').value,
+                telefono: document.getElementById('reg-tel').value,
+                direccion: document.getElementById('reg-dir').value
+            };
+
+            if(!data.nombre) {
+                mostrarAlerta("Nombre Requerido", "El nombre del cliente es obligatorio.", "error");
+                return;
+            }
+
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                mostrarAlerta("Éxito", "Cliente registrado exitosamente", "info");
+                document.getElementById('reg-nombre').value = '';
+                document.getElementById('reg-identidad').value = '';
+                document.getElementById('reg-tel').value = '';
+                document.getElementById('reg-dir').value = '';
+                cargarClientesFull();
+            } else {
+                try {
+                    const err = await resp.json();
+                    mostrarAlerta("Error al Guardar Cliente", err.detail || "Error desconocido al guardar el cliente.", "error");
+                } catch (e) {
+                    const text = await resp.text();
+                    console.error("Error del servidor:", text);
+                    mostrarAlerta("Error de Servidor", "Error crítico del servidor. Verifique si el RTN ya existe o es muy largo.", "error");
+                }
+            }
+        }
+
+        async function cargarClientesFull() {
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/`, { headers: getHeaders() });
+            if (!resp) return;
+
+            cacheClientes = await resp.json();
+            renderClientesTable(cacheClientes);
+        }
+
+        function obtenerNumeroInicialDesdeRango(rango) {
+            if (!rango) return 1;
+            const match = rango.toString().trim().match(/(\d+)$/);
+            if (!match) return 1;
+            const numero = parseInt(match[1], 10);
+            return (!isNaN(numero) && numero > 0) ? numero : 1;
+        }
+
+        function construirRangoDesdeConNumero(rango, numero) {
+            if (!numero || isNaN(numero) || numero <= 0) return rango || '';
+            const numeroStr = numero.toString();
+
+            if (!rango) return numeroStr;
+            const match = rango.toString().trim().match(/(\d+)$/);
+            if (!match) {
+                // Si no hay sufijo reconocible, agregamos con guión
+                return `${rango}-${numeroStr}`;
+            }
+
+            const longitudAnterior = match[1].length;
+            const numeroPadding = numeroStr.padStart(longitudAnterior, '0');
+            return `${rango.slice(0, match.index)}${numeroPadding}`;
+        }
+
+        async function cargarDatosNegocio() {
+            const resp = await apiRequest(`${API_BASE_URL}/negocio/`, { headers: getHeaders() });
+            if (!resp) return;
+            cacheNegocio = await resp.json();
+            
+            // Actualizar Logo en la navegación para todos
+            const logoNav = document.getElementById('logo-nav');
+            if (cacheNegocio.logo) {
+                logoNav.src = cacheNegocio.logo;
+                logoNav.classList.remove('hidden');
+            } else {
+                logoNav.classList.add('hidden');
+            }
+
+            // Llenar formulario si existe
+            const bizNombre = document.getElementById('biz-nombre');
+            if (bizNombre) {
+                bizNombre.value = cacheNegocio.nombre;
+                document.getElementById('biz-rtn').value = cacheNegocio.rtn;
+                document.getElementById('biz-tel').value = cacheNegocio.telefono;
+                document.getElementById('biz-dir').value = cacheNegocio.direccion;
+                document.getElementById('biz-cai').value = cacheNegocio.cai;
+                document.getElementById('biz-desde').value = cacheNegocio.rango_desde;
+                document.getElementById('biz-hasta').value = cacheNegocio.rango_hasta;
+                document.getElementById('biz-numero-inicio').value = cacheNegocio.numero_inicio_factura || 1;
+                document.getElementById('biz-limite').value = cacheNegocio.fecha_limite.split('T')[0];
+            }
+        }
+
+        async function actualizarDatosNegocio() {
+            const logoInput = document.getElementById('biz-logo');
+            let logoBase64 = cacheNegocio?.logo || null;
+
+            if (logoInput.files && logoInput.files[0]) {
+                logoBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(logoInput.files[0]);
+                });
+            }
+
+            const numeroInicio = parseInt(document.getElementById('biz-numero-inicio').value, 10);
+
+            const data = {
+                nombre: document.getElementById('biz-nombre').value,
+                rtn: document.getElementById('biz-rtn').value,
+                telefono: document.getElementById('biz-tel').value,
+                direccion: document.getElementById('biz-dir').value,
+                cai: document.getElementById('biz-cai').value,
+                rango_desde: document.getElementById('biz-desde').value,
+                rango_hasta: document.getElementById('biz-hasta').value,
+                fecha_limite: document.getElementById('biz-limite').value,
+                numero_inicio_factura: (!isNaN(numeroInicio) && numeroInicio > 0) ? numeroInicio : 1,
+                logo: logoBase64
+            };
+
+            const resp = await apiRequest(`${API_BASE_URL}/negocio/`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Datos del negocio actualizados correctamente", "info");
+                cacheNegocio = await resp.json();
+            }
+        }
+
+        function renderClientesTable(clientes) {
+            const body = document.getElementById('tabla-clientes-body');
+            body.innerHTML = clientes.map(c => `
+                <tr class="hover:bg-gray-50">
+                    <td class="p-3 border font-medium">${c.nombre}</td>
+                    <td class="p-3 border text-sm text-gray-600">${c.rtn || c.dni || 'Consumidor Final'}</td>
+                    <td class="p-3 border text-sm">${c.telefono}</td>
+                    <td class="p-3 border space-x-2">
+                        ${currentUser.rol === 'admin' ? `
+                            <button onclick="editarCliente(${c.id}, '${c.nombre}', '${c.rtn || ''}', '${c.dni || ''}', '${c.telefono}', '${c.direccion || ''}')" class="text-blue-600 hover:underline">Editar</button>
+                            <button onclick="eliminarCliente(${c.id})" class="text-red-600 hover:underline">Borrar</button>
+                        ` : '<span class="text-gray-400 text-sm">Solo lectura</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrarClientes() {
+            const query = document.getElementById('search-cliente').value.toLowerCase();
+            const filtrados = cacheClientes.filter(c => 
+                c.nombre.toLowerCase().includes(query) || 
+                (c.rtn && c.rtn.includes(query))
+            );
+            renderClientesTable(filtrados);
+        }
+
+        function editarCliente(id, nombre, rtn, dni, tel, dir) {
+            document.getElementById('edit-cli-id').value = id;
+            document.getElementById('edit-cli-nombre').value = nombre;
+            document.getElementById('edit-cli-identidad').value = rtn || dni || '';
+            document.getElementById('edit-cli-tel').value = tel;
+            document.getElementById('edit-cli-dir').value = dir;
+            document.getElementById('modal-cliente').classList.remove('hidden');
+        }
+
+        async function guardarEdicionCliente() {
+            const id = document.getElementById('edit-cli-id').value;
+            const data = {
+                nombre: document.getElementById('edit-cli-nombre').value,
+                identidad: document.getElementById('edit-cli-identidad').value,
+                telefono: document.getElementById('edit-cli-tel').value,
+                direccion: document.getElementById('edit-cli-dir').value
+            };
+
+            if (!data.nombre) return mostrarAlerta("Nombre Requerido", "El nombre del cliente es obligatorio.", "error");
+
+            const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Cliente actualizado correctamente", "info");
+                document.getElementById('modal-cliente').classList.add('hidden');
+                cargarClientesFull();
+                cargarDocumentosRelacionados();
+
+                if (selectedClienteId && selectedClienteId.toString() === id.toString()) {
+                    document.getElementById('nombre').value = data.nombre;
+                    document.getElementById('identidad').value = data.identidad || '';
+                    document.getElementById('tel').value = data.telefono || '';
+                    document.getElementById('dir').value = data.direccion || '';
+                    localStorage.setItem('draft_nombre', data.nombre);
+                    localStorage.setItem('draft_identidad', data.identidad || '');
+                    cargarVehiculosCliente(selectedClienteId);
+                }
+            } else if (resp) {
+                const err = await resp.json();
+                mostrarAlerta("Error al Actualizar Cliente", err.detail || "Error desconocido al actualizar el cliente.", "error");
+            }
+        }
+
+        function editarItemCatalogo(id, nombre, precio, tipo, existencia) {
+            document.getElementById('edit-inv-id').value = id;
+            document.getElementById('edit-inv-nombre').value = nombre;
+            document.getElementById('edit-inv-precio').value = precio;
+            document.getElementById('edit-inv-tipo').value = tipo;
+            document.getElementById('edit-inv-existencia').value = existencia;
+            document.getElementById('modal-inventario').classList.remove('hidden');
+        }
+
+        async function guardarEdicionItem() {
+            const id = document.getElementById('edit-inv-id').value;
+            const data = {
+                nombre: document.getElementById('edit-inv-nombre').value,
+                precio: parseFloat(document.getElementById('edit-inv-precio').value),
+                tipo: document.getElementById('edit-inv-tipo').value,
+                existencia: parseInt(document.getElementById('edit-inv-existencia').value)
+            };
+
+            if (!data.nombre || isNaN(data.precio)) return mostrarAlerta("Datos Incompletos", "El nombre y el precio del item son obligatorios.", "error");
+
+            const resp = await apiRequest(`${API_BASE_URL}/inventario/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Item actualizado correctamente", "info");
+                document.getElementById('modal-inventario').classList.add('hidden');
+                cargarCatalogo();
+            } else if (resp) {
+                const err = await resp.json();
+                mostrarAlerta("Error al Actualizar Item", err.detail || "Error desconocido al actualizar el item.", "error");
+            }
+        }
+
+        async function eliminarCliente(id) {
+            mostrarConfirmacion(
+                "¿Eliminar Cliente?", 
+                "Esta acción podría afectar historiales de facturación. ¿Desea continuar?", 
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/clientes/${id}`, {
+                        method: 'DELETE',
+                        headers: getHeaders()
+                    });
+                    if (!resp) return;
+
+                    if(resp.ok) {
+                        mostrarAlerta("Éxito", "Cliente eliminado correctamente", "info");
+                        cargarClientesFull();
+                    } else {
+                        try {
+                            const err = await resp.json();
+                            mostrarAlerta("No se puede eliminar", err.detail || "Error desconocido", "error");
+                        } catch (e) {
+                            mostrarAlerta("Error", "Ocurrió un error inesperado al intentar eliminar.", "error");
+                        }
+                    }
+                }
+            );
+        }
+
+        async function cargarUsuarios() {
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/`, { headers: getHeaders() });
+            if (!resp) return;
+
+            const usuarios = await resp.json();
+            const lista = document.getElementById('lista-usuarios');
+            lista.innerHTML = usuarios.map(u => `
+                <div class="flex justify-between items-center bg-gray-50 p-2 border rounded">
+                    <span><strong>${u.username}</strong> (${u.rol})</span>
+                    <div class="space-x-2">
+                        <button onclick="editarUsuario(${u.id}, '${u.username}', '${u.rol}')" class="text-blue-600 text-sm">Editar</button>
+                        ${u.username !== 'admin' ? `<button onclick="eliminarUsuario(${u.id})" class="text-red-500 text-sm">Eliminar</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function crearUsuario() {
+            const user = document.getElementById('new-user').value;
+            const pass = document.getElementById('new-pass').value;
+            const rol = document.getElementById('new-rol').value;
+            
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({ username: user, password: pass, rol: rol })
+            });
+
+            if (!resp) return;
+
+            if(resp.ok) {
+                mostrarAlerta("Éxito", "Usuario creado correctamente", "info");
+                cargarUsuarios();
+                document.getElementById('new-user').value = '';
+                document.getElementById('new-pass').value = '';
+            } else {
+                const err = await resp.json();
+                mostrarAlerta("Error al Crear Usuario", err.detail || "Error desconocido al crear el usuario.", "error");
+            }
+        }
+
+        async function eliminarUsuario(id) {
+            mostrarConfirmacion(
+                "¿Eliminar Usuario?",
+                "¿Está seguro de eliminar este usuario? Esta acción es irreversible.",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, {
+                        method: 'DELETE',
+                        headers: getHeaders()
+                    });
+                    if (!resp) return;
+                    if(resp.ok) {
+                        mostrarAlerta("Éxito", "Usuario eliminado correctamente", "info");
+                        cargarUsuarios();
+                    } else {
+                        const err = await resp.json();
+                        mostrarAlerta("Error al Eliminar Usuario", err.detail || "Error desconocido al eliminar el usuario.", "error");
+                    }
+                }
+            );
+        }
+
+        function editarUsuario(id, username, rol) {
+            document.getElementById('edit-user-id').value = id;
+            document.getElementById('edit-user-name').value = username;
+            document.getElementById('edit-user-rol').value = rol;
+            document.getElementById('edit-user-pass').value = '';
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        async function guardarEdicionUsuario() {
+            const id = document.getElementById('edit-user-id').value;
+            const username = document.getElementById('edit-user-name').value;
+            const rol = document.getElementById('edit-user-rol').value;
+            const pass = document.getElementById('edit-user-pass').value;
+
+            if (!username) return mostrarAlerta("Nombre de Usuario Requerido", "El nombre de usuario es obligatorio.", "error");
+
+            const data = { username, rol };
+            if (pass) data.password = pass;
+
+            const resp = await apiRequest(`${API_BASE_URL}/usuarios/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Usuario actualizado correctamente", "info");
+                document.getElementById('modal-usuario').classList.add('hidden');
+                cargarUsuarios();
+            } else if (resp) {
+                const err = await resp.json();
+                mostrarAlerta("Error al Actualizar Usuario", err.detail || "Error desconocido al actualizar el usuario.", "error");
+            }
+        }
+
+        async function cargarCobros() {
+            // Cache busting para asegurar datos en tiempo real
+            const resp = await apiRequest(`${API_BASE_URL}/caja/pendientes?_=${Date.now()}`, { headers: getHeaders() });
+            if (!resp) return;
+
+            cacheCobros = await resp.json();
+            filtrarCobros(); // Mantiene el filtro si el usuario está buscando
+        }
+
+        function renderCobros(datos) {
+            const lista = document.getElementById('lista-cobros');
+            lista.innerHTML = datos.map(o => {
+                const idVal = (o.cliente_rtn !== 'Consumidor Final' ? o.cliente_rtn : (o.cliente_dni !== 'N/A' ? o.cliente_dni : 'Consumidor Final'));
+                return `
+                <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-blue-300 transition-colors">
+                    <div>
+                        <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
+                        <p class="text-xs text-gray-500">ID: ${idVal} | #${o.id}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-blue-700">Lps. ${o.total.toFixed(2)}</p>
+                        <div class="flex flex-col items-end">
+                            <button onclick="mostrarFactura(${o.id})" class="bg-blue-600 text-white px-4 py-1 rounded text-sm mt-1">Ver Orden</button>
+                            <button onclick="anularFactura(${o.id})" class="text-red-500 text-xs underline mt-2">Anular Orden</button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function filtrarCobros() {
+            const q = document.getElementById('search-cobro').value.toLowerCase();
+            const filtrados = cacheCobros.filter(o => 
+                o.cliente_nombre.toLowerCase().includes(q) || 
+                o.cliente_rtn.includes(q)
+            );
+            renderCobros(filtrados);
+        }
+
+        async function cargarCotizaciones() {
+            const resp = await apiRequest(`${API_BASE_URL}/caja/cotizaciones?_=${Date.now()}`, { headers: getHeaders() });
+            if (!resp) return;
+            cacheCotizaciones = await resp.json();
+            renderCotizaciones(cacheCotizaciones);
+        }
+
+        function renderCotizaciones(datos) {
+            const lista = document.getElementById('lista-cotizaciones');
+            if (datos.length === 0) {
+                lista.innerHTML = '<p class="text-gray-400 italic text-sm">No hay cotizaciones pendientes.</p>';
+                return;
+            }
+            lista.innerHTML = datos.map(o => {
+                const fechaCot = new Date(o.fecha + 'Z');
+                const diff = Math.floor((new Date() - fechaCot) / (1000 * 60 * 60 * 24));
+                const esVencida = diff > 7;
+                return `
+                <div class="bg-gray-50 p-3 border rounded hover:border-purple-300 transition-colors">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-gray-800">${o.cliente_nombre}</p>
+                            <p class="text-xs text-gray-500">#${o.id} | Generada: ${fechaCot.toLocaleDateString()}</p>
+                            ${esVencida ? '<span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold uppercase">Vencida (+7 días)</span>' : '<span class="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded font-bold uppercase">Vigente</span>'}
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-purple-700">Lps. ${o.total.toFixed(2)}</p>
+                            <button onclick="mostrarFacturaFromCache(${o.id}, 'cotizacion')" class="text-purple-600 text-xs font-bold underline">Ver Cotización</button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        async function convertirAOrden(id) {
+            mostrarConfirmacion(
+                "Convertir a Orden de Cobro",
+                "¿Desea convertir esta cotización en una orden de cobro? Los precios actuales serán respetados.",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/caja/convertir-cotizacion/${id}`, { method: 'POST', headers: getHeaders() });
+                    if (!resp) return;
+                    if (resp.ok) {
+                        mostrarAlerta("Éxito", "Cotización enviada a caja con éxito.", "info");
+                        document.getElementById('modal-factura').classList.add('hidden');
+                        cargarCotizaciones();
+                        cargarCobros();
+                        return;
+                    }
+                    try {
+                        const error = await resp.json();
+                        mostrarAlerta("Error al Convertir Cotización", error.detail || "Error desconocido al enviar a caja.", "error");
+                    } catch (e) {
+                        mostrarAlerta("Error de Servidor", "Error al enviar a caja: " + resp.statusText, "error");
+                    }
+                }
+            );
+        }
+
+        async function cargarPagadas() {
+            const resp = await apiRequest(`${API_BASE_URL}/caja/pagadas?_=${Date.now()}`, { headers: getHeaders() });
+            if (!resp) return;
+            cachePagadas = await resp.json();
+            filtrarPagadas(); // Mantiene el filtro si el usuario está buscando
+        }
+
+        function renderPagadas(datos) {
+            const lista = document.getElementById('lista-pagadas');
+            lista.innerHTML = datos.map(o => {
+                const idVal = (o.cliente_rtn !== 'Consumidor Final' ? o.cliente_rtn : (o.cliente_dni !== 'N/A' ? o.cliente_dni : 'Consumidor Final'));
+                const isAnulada = o.estado === 'Anulada';
+                return `
+                <div class="flex justify-between items-center bg-gray-50 p-3 border rounded hover:border-blue-300 transition-colors ${isAnulada ? 'opacity-75 bg-red-50' : ''}">
+                    <div class="${isAnulada ? 'line-through text-gray-400' : ''}">
+                        <p class="font-bold ${isAnulada ? 'text-red-400' : 'text-gray-800'}">${o.cliente_nombre} ${isAnulada ? '(ANULADA)' : ''}</p>
+                        <p class="text-xs text-gray-500">ID: ${idVal} | #${o.id} | ${new Date(o.fecha + 'Z').toLocaleDateString()}</p>
+                        <p class="text-[10px] font-bold mt-1 uppercase text-gray-400">
+                            Pago: ${o.metodo_pago || 'N/A'} ${o.referencia_pago ? `(${o.referencia_pago})` : ''}
+                            ${o.comprobante_pago ? '<span class="ml-2 text-blue-600 font-black">📎 CON COMPROBANTE</span>' : ''}
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${isAnulada ? 'text-gray-400' : 'text-blue-700'}">Lps. ${o.total.toFixed(2)}</p>
+                        <div class="space-x-2 mt-1">
+                            <button onclick="mostrarFacturaFromCache(${o.id}, 'pagada', true)" class="text-blue-600 text-sm font-bold border border-blue-600 px-2 py-1 rounded hover:bg-blue-600 hover:text-white transition">
+                                ${currentUser.rol === 'cajero' ? 'Revisar/Imprimir Copia' : 'Ver Detalle'}
+                            </button>
+                            ${currentUser.rol === 'admin' ? `
+                                <button onclick="${isAnulada ? '' : `anularFactura(${o.id})`}" 
+                                        ${isAnulada ? 'disabled' : ''} 
+                                        class="${isAnulada ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white'} px-3 py-1 rounded text-sm font-bold">
+                                    Anular
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function filtrarPagadas() {
+            const q = document.getElementById('search-pagada').value.toLowerCase();
+            const filtrados = cachePagadas.filter(o => 
+                o.cliente_nombre.toLowerCase().includes(q) || 
+                o.cliente_rtn.includes(q) ||
+                o.cliente_dni.includes(q)
+            );
+            renderPagadas(filtrados);
+        }
+
+        async function cargarTaller() {
+            const resp = await apiRequest(`${API_BASE_URL}/taller/pendientes?_=${Date.now()}`, { headers: getHeaders() });
+            if (!resp) return;
+            const datos = await resp.json();
+            const container = document.getElementById('lista-taller');
+            const esAdminJefe = currentUser.rol === 'admin' || currentUser.rol === 'jefe_pista';
+            
+            if (datos.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 italic">No hay vehículos en espera.</p>';
+                return;
+            }
+
+            container.innerHTML = datos.map(o => `
+                <div class="bg-orange-50 border-l-4 ${o.mecanico_id ? 'border-blue-500 bg-blue-50' : (o.estado_pago === 'Pagada' ? 'border-green-500' : 'border-orange-500')} p-4 rounded shadow-sm">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-black text-lg text-orange-900 uppercase">${o.tipo_trabajo}</h4>
+                        <span class="text-xs font-bold bg-orange-200 px-2 py-1 rounded">#${o.id}</span>
+                    </div>
+                    <p class="text-md mt-1"><strong>Vehículo:</strong> ${o.vehiculo_marca} ${o.vehiculo_modelo}</p>
+                    <p class="text-lg font-bold text-blue-800 mt-2">Cliente: ${o.cliente_nombre}</p>
+                    <div class="mt-4 flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold ${o.estado_pago === 'Pagada' ? 'text-green-600' : 'text-red-500'}">
+                                ${o.estado_pago === 'Pagada' ? '✓ PAGADO' : '⌛ PENDIENTE DE PAGO'}
+                            </span>
+                            ${o.inicio_trabajo ? `<span class="text-[10px] text-blue-600 font-bold uppercase">Iniciado: ${new Date(o.inicio_trabajo + 'Z').toLocaleTimeString()}</span>` : ''}
+                        </div>
+                        ${!o.mecanico_id 
+                            ? (esAdminJefe 
+                                ? `<select onchange="asignarMecanicoDirecto(${o.id}, this.value)" class="p-1 border rounded text-xs">${generarOpcionesMecanicos(null)}</select>`
+                                : `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Tomar Trabajo</button>`)
+                            : (esAdminJefe
+                                ? `<div class="flex flex-col items-end gap-1">
+                                     <span class="text-[10px] font-bold text-gray-500">Mecánico: ${o.mecanico_nombre.toUpperCase()}</span>
+                                     <select onchange="asignarMecanicoDirecto(${o.id}, this.value)" class="p-1 border rounded text-[10px] bg-white">${generarOpcionesMecanicos(o.mecanico_id)}</select>
+                                     ${o.inicio_trabajo ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold">Forzar Completado</button>` : ''}
+                                   </div>`
+                                : (o.mecanico_id === currentUser.user_id 
+                                    ? (o.inicio_trabajo 
+                                        ? `<button onclick="completarTrabajo(${o.id})" class="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-green-700">Trabajo Completado</button>`
+                                        : `<button onclick="asignarTrabajo(${o.id})" class="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700">Iniciar Mi Trabajo</button>`)
+                                    : `<span class="text-xs font-bold text-gray-400 italic">En proceso por: ${o.mecanico_nombre.toUpperCase()}</span>`))
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function generarOpcionesMecanicos(selectedId) {
+            let html = `<option value="">-- Reasignar --</option>`;
+            html += cacheMecanicos.map(m => `<option value="${m.id}" ${m.id == selectedId ? 'selected' : ''}>${m.username.toUpperCase()}</option>`).join('');
+            return html;
+        }
+
+        async function asignarTrabajo(id) {
+            const resp = await apiRequest(`${API_BASE_URL}/taller/asignar/${id}`, { 
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (resp && resp.ok) {
+                cargarTaller();
+            } else if (resp) {
+                const err = await resp.json();
+                mostrarAlerta("Error de Asignación", err.detail, "error");
+            }
+        }
+
+        async function asignarMecanicoDirecto(ordenId, mecanicoId) {
+            const url = `${API_BASE_URL}/caja/asignar-mecanico/${ordenId}${mecanicoId ? `?mecanico_id=${mecanicoId}` : ''}`;
+            const resp = await apiRequest(url, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (resp && resp.ok) {
+                cargarTaller();
+            }
+        }
+
+        async function completarTrabajo(id) {
+            mostrarConfirmacion(
+                "Completar Trabajo", 
+                "¿Desea marcar este trabajo como completado? Se quitará de la pantalla.", 
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/taller/completar/${id}`, { 
+                        method: 'POST',
+                        headers: getHeaders()
+                    });
+                    if (resp && resp.ok) {
+                        cargarTaller();
+                    }
+                }
+            );
+        }
+
+        async function cargarBalances() {
+            const desde = document.getElementById('rep-desde').value;
+            const hasta = document.getElementById('rep-hasta').value;
+
+            const params = new URLSearchParams();
+            if (desde) params.append('desde', desde);
+            if (hasta) params.append('hasta', hasta);
+            const queryString = params.toString() ? `?${params.toString()}` : "";
+
+            const [respIng, respEgr] = await Promise.all([
+                apiRequest(`${API_BASE_URL}/caja/pagadas${queryString}`, { headers: getHeaders() }),
+                apiRequest(`${API_BASE_URL}/reportes/egresos${queryString}`, { headers: getHeaders() })
+            ]);
+            
+            cacheIngresosReporte = await respIng.json();
+            cacheEgresosReporte = await respEgr.json();
+            const totalIng = cacheIngresosReporte.reduce((sum, o) => sum + (o.estado !== 'Anulada' ? o.total : 0), 0);
+            const totalEgr = cacheEgresosReporte.reduce((sum, e) => sum + e.monto, 0);
+            
+            document.getElementById('total-ingresos-label').innerText = `Ingresos: Lps. ${totalIng.toFixed(2)}`;
+            document.getElementById('total-egresos-label').innerText = `Egresos: Lps. ${totalEgr.toFixed(2)}`;
+            document.getElementById('balance-final-label').innerText = `Utilidad: Lps. ${(totalIng - totalEgr).toFixed(2)}`;
+            
+            document.getElementById('lista-reporte-ingresos').innerHTML = cacheIngresosReporte.map(i => `
+                <div class="flex justify-between p-2 border-b text-sm ${i.estado === 'Anulada' ? 'opacity-50 line-through' : ''}">
+                    <div>
+                        <p class="font-bold">${i.cliente_nombre}</p>
+                        <p class="text-xs text-gray-500">${new Date(i.fecha + 'Z').toLocaleString()}</p>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-green-600 font-bold">+Lps. ${i.total.toFixed(2)}</span>
+                        ${currentUser.rol === 'admin' ? `<button onclick="eliminarIngresoReporte(${i.id})" class="text-[10px] text-red-500 hover:underline mt-1">Eliminar Registro</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('lista-reporte-egresos').innerHTML = cacheEgresosReporte.map(e => `
+                <div class="flex justify-between p-2 border-b text-sm">
+                    <div>
+                        <p class="font-bold">${e.descripcion}</p>
+                        <p class="text-xs text-gray-500">${new Date(e.fecha + 'Z').toLocaleString()}</p>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-red-600 font-bold">-Lps. ${e.monto.toFixed(2)}</span>
+                        ${currentUser.rol === 'admin' ? `<button onclick="eliminarEgresoReporte(${e.id})" class="text-[10px] text-red-500 hover:underline mt-1">Eliminar</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function eliminarIngresoReporte(id) {
+            mostrarConfirmacion(
+                "Eliminar Venta",
+                "¿Está seguro de eliminar este registro permanentemente? Esto afectará los balances y no se puede deshacer.",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/ordenes/${id}`, { method: 'DELETE', headers: getHeaders() });
+                    if (resp && resp.ok) {
+                        mostrarAlerta("Éxito", "Venta eliminada del sistema", "info");
+                        cargarBalances();
+                    }
+                }
+            );
+        }
+
+        async function eliminarEgresoReporte(id) {
+            mostrarConfirmacion(
+                "Eliminar Egreso",
+                "¿Desea borrar este gasto de la base de datos?",
+                async () => {
+                    const resp = await apiRequest(`${API_BASE_URL}/reportes/egresos/${id}`, { method: 'DELETE', headers: getHeaders() });
+                    if (resp && resp.ok) {
+                        mostrarAlerta("Éxito", "Egreso eliminado", "info");
+                        cargarBalances();
+                    }
+                }
+            );
+        }
+
+        function exportarReporte(formato) {
+            if (!cacheIngresosReporte.length && !cacheEgresosReporte.length) {
+                return mostrarAlerta("Sin Datos", "No hay datos para exportar. Filtre primero.", "error");
+            }
+
+            let contenido = "";
+            let mimeType = "";
+            let extension = "";
+
+            if (formato === 'json') {
+                contenido = JSON.stringify({ ingresos: cacheIngresosReporte, egresos: cacheEgresosReporte }, null, 2);
+                mimeType = "application/json";
+                extension = "json";
+            } else if (formato === 'csv') {
+                contenido = "TIPO,NUM_FACTURA,FECHA,CLIENTE/DESCRIPCION,SUBTOTAL,IMPUESTO,TOTAL,ESTADO\n";
+                cacheIngresosReporte.forEach(i => {
+                    contenido += `INGRESO,${i.documento_numero},${i.fecha},"${i.cliente_nombre}",${i.subtotal},${i.impuesto},${i.total},${i.estado}\n`;
+                });
+                cacheEgresosReporte.forEach(e => {
+                    contenido += `EGRESO,N/A,${e.fecha},"${e.descripcion}",${e.monto},0,${e.monto},Pagado\n`;
+                });
+                mimeType = "text/csv";
+                extension = "csv";
+            } else if (formato === 'xml') {
+                contenido = `<?xml version="1.0" encoding="UTF-8"?>\n<ReporteTaller>\n  <Ingresos>\n`;
+                cacheIngresosReporte.forEach(i => {
+                    contenido += `    <Factura>\n      <Numero>${i.documento_numero}</Numero>\n      <Fecha>${i.fecha}</Fecha>\n      <Cliente>${i.cliente_nombre}</Cliente>\n      <Subtotal>${i.subtotal}</Subtotal>\n      <Impuesto>${i.impuesto}</Impuesto>\n      <Total>${i.total}</Total>\n      <Estado>${i.estado}</Estado>\n    </Factura>\n`;
+                });
+                contenido += `  </Ingresos>\n  <Egresos>\n`;
+                cacheEgresosReporte.forEach(e => {
+                    contenido += `    <Egreso>\n      <Fecha>${e.fecha}</Fecha>\n      <Descripcion>${e.descripcion}</Descripcion>\n      <Monto>${e.monto}</Monto>\n    </Egreso>\n`;
+                });
+                contenido += `  </Egresos>\n</ReporteTaller>`;
+                mimeType = "application/xml";
+                extension = "xml";
+            }
+
+            const blob = new Blob([contenido], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Reporte_${new Date().toISOString().split('T')[0]}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function cargarNotasVersion() {
+            const resp = await apiRequest(`${API_BASE_URL}/sistema/notas-version`, { headers: getHeaders() });
+            if (!resp || !resp.ok) return;
+            
+            const notas = await resp.json();
+            const container = document.getElementById('lista-notas-version');
+            
+            if (notas.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 italic">No hay notas registradas aún.</p>';
+                return;
+            }
+
+            container.innerHTML = notas.map(n => `
+                <div class="relative">
+                    <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow-sm"></div>
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-lg text-gray-800">${n.titulo} <span class="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">${n.version}</span></h4>
+                            <span class="text-xs text-gray-500 font-medium">${new Date(n.fecha).toLocaleString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line">${n.descripcion}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function cargarRendimiento() {
+            const respRend = await apiRequest(`${API_BASE_URL}/reportes/rendimiento`, { headers: getHeaders() });
+            const rendimiento = await respRend.json();
+            const listaRendimiento = document.getElementById('lista-reporte-rendimiento');
+            if (!rendimiento.length) {
+                listaRendimiento.innerHTML = `
+                    <div class="col-span-1 bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                        <p class="text-gray-700 font-semibold">No hay datos de rendimiento disponibles.</p>
+                        <p class="text-sm text-gray-500">Asegúrate de que haya órdenes de taller pendientes, en progreso o completadas.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listaRendimiento.innerHTML = rendimiento.map(r => `
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg ${r.resumen ? 'bg-yellow-50 border-yellow-200' : ''}">
+                    <h4 class="font-semibold text-lg ${r.resumen ? 'text-yellow-700' : 'text-blue-700'}">${r.mecanico}</h4>
+                    <p class="text-sm text-gray-600">Trabajos completados: <span class="font-bold">${r.trabajos_completados}</span></p>
+                    <p class="text-sm text-gray-600">Tiempo promedio por trabajo: <span class="font-bold">${r.tiempo_promedio_min} min</span></p>
+                    <p class="text-sm text-gray-600">Trabajos en progreso / pendientes: <span class="font-bold">${r.trabajos_en_progreso || 0}</span></p>
+                </div>
+            `).join('');
+        }
+
+        function anularFactura(id) {
+            document.getElementById('anular-id-hidden').value = id;
+            document.getElementById('modal-anular').classList.remove('hidden');
+        }
+
+        async function confirmarAnulacion() {
+            const id = document.getElementById('anular-id-hidden').value;
+            const resp = await apiRequest(`${API_BASE_URL}/caja/anular/${id}`, { 
+                method: 'POST',
+                headers: getHeaders()
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Documento anulado con éxito.", "info");
+                document.getElementById('modal-anular').classList.add('hidden');
+                document.getElementById('modal-factura').classList.add('hidden');
+                cargarPagadas();
+                cargarCobros();
+            }
+        }
+
+        // Helper para mostrar factura desde cualquier cache
+        function mostrarFacturaFromCache(id, tipoCache, esCopia = false) {
+            let source = cacheCobros;
+            if (tipoCache === 'pagada') source = cachePagadas;
+            if (tipoCache === 'cotizacion') source = cacheCotizaciones;
+            mostrarFactura(id, source, esCopia);
+        }
+
+        function toggleReferencia() {
+            const metodo = document.getElementById('select-metodo').value;
+            const divRef = document.getElementById('pos-referencia');
+            const labelRef = document.getElementById('label-referencia');
+            const transferSection = document.getElementById('transfer-upload-section');
+
+            if (metodo === 'Tarjeta' || metodo === 'Transferencia') {
+                divRef.classList.remove('hidden');
+                labelRef.innerText = metodo === 'Tarjeta' ? 'Ref. Transacción POS:' : 'Número de Confirmación Bancaria:';
+                transferSection.classList.toggle('hidden', metodo !== 'Transferencia');
+            } else {
+                divRef.classList.add('hidden');
+            }
+        }
+
+        function toggleEditarFactura() {
+            const section = document.getElementById('edit-factura-section');
+            section.classList.toggle('hidden');
+        }
+
+        async function guardarCambiosFactura() {
+            const nombre = document.getElementById('edit-factura-nombre').value;
+            const identidad = document.getElementById('edit-factura-identidad').value;
+
+            const resp = await apiRequest(`${API_BASE_URL}/ordenes/${currentEditingOrderId}/facturacion`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify({ nombre, identidad })
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Datos de facturación actualizados", "info");
+                location.reload(); 
+            }
+        }
+
+        function mostrarFactura(id, source = null, esCopia = false) {
+            const orden = (source || cacheCobros).find(o => o.id == id);
+            if (!orden) return;
+
+            const isPaid = orden.estado === 'Pagada';
+            const isAnulada = orden.estado === 'Anulada';
+            const isCotizacion = orden.tipo === 'Cotizacion';
+            const isFinalized = isPaid || isAnulada;
+            
+            const isCajeroOrAdmin = currentUser.rol === 'admin' || currentUser.rol === 'cajero';
+            
+            // Ajustar visibilidad de botones y secciones según el estado
+            document.getElementById('metodo-pago-section').classList.toggle('hidden', isFinalized || isCotizacion || !isCajeroOrAdmin);
+            document.getElementById('btn-confirmar-cobro').classList.toggle('hidden', isFinalized || isCotizacion || !isCajeroOrAdmin);
+            document.getElementById('btn-convertir-factura').classList.toggle('hidden', !isCotizacion);
+            document.getElementById('btn-imprimir-copia').classList.toggle('hidden', !isFinalized && !isCotizacion);
+            document.querySelector('#modal-factura h2').innerText = isCotizacion ? 'Detalle de Cotización' : (isAnulada ? 'Factura Anulada' : (isPaid ? 'Consulta de Factura' : 'Detalle de Cobro'));
+
+
+            // Reset campos de pago
+            document.getElementById('select-metodo').value = 'Efectivo';
+            document.getElementById('input-referencia').value = '';
+            document.getElementById('pos-referencia').classList.add('hidden');
+            document.getElementById('print-payment-info').classList.add('hidden');
+            document.getElementById('edit-factura-section').classList.add('hidden');
+            document.getElementById('input-comprobante').value = '';
+            document.getElementById('btn-anular-factura-modal').classList.toggle('hidden', isAnulada);
+            
+            if (isPaid) {
+                document.getElementById('print-metodo').innerText = orden.metodo_pago;
+                document.getElementById('print-ref-span').innerText = orden.referencia_pago ? `(Ref: ${orden.referencia_pago})` : "";
+                document.getElementById('print-payment-info').classList.remove('hidden');
+            }
+
+            currentEditingOrderId = id;
+            document.getElementById('edit-factura-nombre').value = orden.cliente_nombre;
+            document.getElementById('edit-factura-identidad').value = (orden.cliente_rtn !== 'Consumidor Final' ? orden.cliente_rtn : (orden.cliente_dni !== 'N/A' ? orden.cliente_dni : ''));
+
+            const items = orden.descripcion.split(';').filter(r => r.trim() !== "").map(row => {
+                const parts = row.split('|');
+                if (parts.length === 3) {
+                    // Parseamos explícitamente a números para asegurar el cálculo
+                    return { 
+                        cant: parseInt(parts[0]) || 1, 
+                        nombre: parts[1], 
+                        precio: parseFloat(parts[2]) || 0 
+                    };
+                }
+                // Compatibilidad: Si el registro es viejo y ya tiene el "5x " en el texto
+                const match = row.match(/^(\d+)x\s+(.+)$/);
+                if (match) {
+                    return { cant: parseInt(match[1]), nombre: match[2], precio: 0 };
+                }
+                return { cant: 1, nombre: row, precio: 0 }; // Texto simple sin formato
+            });
+
+            const ordenTotal = parseFloat(orden.total) || 0;
+            const dPerc = parseFloat(orden.descuento) || 0;
+            const subtotalSinDesc = dPerc > 0 ? ordenTotal / (1 - dPerc/100) : ordenTotal;
+            const montoDescuento = subtotalSinDesc - ordenTotal;
+
+            const { base, iva } = calcularImpuesto(ordenTotal);
+
+            // Lógica para identificar la identidad del cliente en factura o cotización
+            let idLabel = "RTN";
+            let idValue = orden.cliente_rtn;
+            if (orden.cliente_rtn === 'Consumidor Final' || !orden.cliente_rtn) {
+                if (orden.cliente_dni && orden.cliente_dni !== 'N/A') {
+                    idLabel = "DNI";
+                    idValue = orden.cliente_dni;
+                } else {
+                    idLabel = "Identidad";
+                    idValue = "Consumidor Final";
+                }
+            }
+
+            const content = document.getElementById('factura-content');
+            content.innerHTML = `
+                ${isCotizacion ? '<div class="watermark watermark-quote">COTIZACIÓN</div>' : ''}
+                ${isAnulada ? '<div class="watermark">ANULADO</div>' : ''}
+                <div class="text-center mb-4 uppercase">
+                    ${esCopia ? '<p class="hidden print:block text-lg font-black border-2 border-black inline-block px-4 py-1 mb-2 mx-auto">COPIA CLIENTE</p>' : ''}
+                    ${cacheNegocio?.logo ? `<img src="${cacheNegocio.logo}" class="h-20 mx-auto mb-2 object-contain">` : ''}
+                    <h3 class="text-xl font-bold">${cacheNegocio?.nombre || 'Taller Pro Auto'}</h3>
+                    <p class="text-xs">${cacheNegocio?.direccion || ''}</p>
+                    <p class="text-xs">TEL: ${cacheNegocio?.telefono || ''}</p>
+                </div>
+
+                ${!isCotizacion ? `
+                <div class="text-[10px] bg-gray-50 p-2 mb-4 border rounded">
+                    <p><strong>CAI:</strong> ${cacheNegocio?.cai || ''}</p>
+                    <p><strong>Rango Autorizado:</strong> ${cacheNegocio?.rango_desde || ''} AL ${cacheNegocio?.rango_hasta || ''}</p>
+                    <p><strong>Fecha Límite Emisión:</strong> ${cacheNegocio ? new Date(cacheNegocio.fecha_limite).toLocaleDateString() : ''}</p>
+                </div>
+                ` : ''}
+
+                <div class="flex justify-between items-center mb-4 border-b pb-1 font-bold">
+                    <span>${isCotizacion ? 'COTIZACIÓN' : 'FACTURA'} No.</span>
+                    <span>${(orden.documento_numero || orden.id).toString().padStart(8, '0')}</span>
+                </div>
+
+                <div class="text-sm border-b pb-2">
+                    <p><strong>Cliente:</strong> ${orden.cliente_nombre}</p>
+                    <p><strong>${idLabel}:</strong> ${idValue}</p>
+                    <p><strong>Fecha:</strong> ${new Date(orden.fecha + 'Z').toLocaleString()}</p>
+                </div>
+                <div class="text-sm space-y-1">
+                    ${items.map(i => `
+                        <div class="flex justify-between">
+                            <span>${i.cant}x ${i.nombre} (Lps. ${i.precio.toFixed(2)})</span>
+                            <span>Lps. ${(i.cant * i.precio).toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                ${dPerc > 0 ? `
+                <div class="flex justify-between text-xs text-purple-700 italic mt-2 border-t border-dashed pt-1">
+                    <span>Descuento Aplicado (${dPerc}%):</span>
+                    <span>- Lps. ${montoDescuento.toFixed(2)}</span>
+                </div>
+                ` : ''}
+                <div class="mt-3 text-sm space-y-1 border-t pt-2">
+                    <div class="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>Lps. ${base.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Impuesto 15%:</span>
+                        <span>Lps. ${iva.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between font-bold text-xl border-t pt-2 text-blue-800">
+                    <span>TOTAL:</span>
+                    <span>Lps. ${ordenTotal.toFixed(2)}</span>
+                </div>
+                ${orden.comprobante_pago ? `
+                    <div class="mt-4 p-2 border rounded bg-gray-50 print:hidden border-dashed">
+                        <p class="text-[10px] font-bold text-gray-500 mb-1">COMPROBANTE ADJUNTO:</p>
+                        <img src="${orden.comprobante_pago}" class="w-full h-32 object-contain cursor-pointer" onclick="openComprobante(this.src)">
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('btn-convertir-factura').onclick = () => convertirAOrden(orden.id);
+            document.getElementById('btn-confirmar-cobro').onclick = () => cobrar(orden.id);
+            document.getElementById('btn-anular-factura-modal').onclick = () => anularFactura(orden.id);
+            document.getElementById('modal-factura').classList.remove('hidden');
+        }
+
+        async function asignarMecanicoDesdeModal() {
+            const mecanicoId = document.getElementById('select-mecanico-modal').value;
+            const url = `${API_BASE_URL}/caja/asignar-mecanico/${currentEditingOrderId}${mecanicoId ? `?mecanico_id=${mecanicoId}` : ''}`;
+            
+            const resp = await apiRequest(url, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+
+            if (resp && resp.ok) {
+                mostrarAlerta("Éxito", "Asignación de taller actualizada", "info");
+                cargarDocumentosRelacionados();
+            }
+        }
+
+        async function cobrar(id) {
+            const metodo = document.getElementById('select-metodo').value;
+            const referencia = document.getElementById('input-referencia').value;
+            const comprobanteInput = document.getElementById('input-comprobante');
+
+            if ((metodo === 'Tarjeta' || metodo === 'Transferencia') && !referencia) {
+                mostrarAlerta("Referencia Requerida", "Debe ingresar el número de referencia o confirmación para el método de pago seleccionado.", "error");
+                return;
+            }
+
+            let comprobanteBase64 = null;
+            if (comprobanteInput.files && comprobanteInput.files[0]) {
+                comprobanteBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(comprobanteInput.files[0]);
+                });
+            }
+
+            const resp = await apiRequest(`${API_BASE_URL}/caja/cobrar/${id}`, { 
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    metodo_pago: metodo,
+                    referencia_pago: referencia || null,
+                    comprobante: comprobanteBase64
+                })
+            });
+            if (!resp) return;
+
+            // Preparar para impresión
+            document.getElementById('print-metodo').innerText = metodo;
+            document.getElementById('print-ref-span').innerText = referencia ? `(Ref: ${referencia})` : "";
+            
+            // Disparar impresión
+            window.print();
+
+            document.getElementById('modal-factura').classList.add('hidden');
+            mostrarAlerta("Éxito", "¡Cobro realizado con éxito!", "info");
+            cargarCobros();
+        }
+
+        function openComprobante(src) {
+            const win = window.open('');
+            if (!win) {
+                mostrarAlerta("Error al Abrir Comprobante", 'No se pudo abrir el comprobante en una nueva ventana. Por favor habilite ventanas emergentes para este sitio.', "error");
+                return;
+            }
+            win.document.write(`<!DOCTYPE html><html><head><title>Comprobante de Pago</title><style>body{margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:100%;max-height:100vh;display:block}</style></head><body><img src="${src}" alt="Comprobante de pago"></body></html>`);
+            win.document.close();
+        }
+
+        function logout() { 
+            localStorage.removeItem('taller_session');
+            location.reload(); 
+        }
+    </script>
+</body>
+</html>
