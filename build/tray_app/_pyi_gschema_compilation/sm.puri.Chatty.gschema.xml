@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="purism-chatty">
+  <schema id="sm.puri.Chatty" path="/sm/puri/Chatty/">
+
+    <key name="first-start" type="b">
+      <default>true</default>
+      <summary>Whether the application is launching the first time</summary>
+      <description>Whether the application is launching the first time</description>
+    </key>
+
+    <key name="country-code" type="s">
+      <default>""</default>
+      <summary>Country code in ISO 3166-1 alpha-2 format</summary>
+      <description>Two letter country code of the last available SIM/Network</description>
+    </key>
+
+    <key name="send-receipts" type="b">
+      <default>false</default>
+      <summary>Send message read receipts</summary>
+      <description>Whether to send the status of the message if read</description>
+    </key>
+
+    <key name="message-carbons" type="b">
+      <default>false</default>
+      <summary>Message carbon copies</summary>
+      <description>Share chat history among devices</description>
+    </key>
+
+    <key name="mam-enabled" type="b">
+      <default>true</default>
+      <summary>Enable Message Archive Management</summary>
+      <description>Enable MAM archive synchronization from the server</description>
+    </key>
+
+    <key name="purple-enabled" type="b">
+      <default>true</default>
+      <summary>Enable purple</summary>
+      <description>Enable purple accounts</description>
+    </key>
+
+    <key name="send-typing" type="b">
+      <default>false</default>
+      <summary>Send typing notifications</summary>
+      <description>Whether to Send typing notifications</description>
+    </key>
+
+    <key name="strip-url-tracking-id" type="b">
+      <default>false</default>
+      <summary>Strip Tracking IDs</summary>
+      <description>Whether to Remove Tracking IDs from URLs Automatically</description>
+    </key>
+
+    <key name="strip-url-tracking-id-dialog" type="b">
+      <default>false</default>
+      <summary>Whether Strip Tracking IDs was shown</summary>
+      <description>Whether the Tracking IDs dialog has been shown</description>
+    </key>
+
+    <key name="render-attachments" type="b">
+      <default>true</default>
+      <summary>Render Attachments</summary>
+      <description>Whether to Render Attachments or not</description>
+    </key>
+
+    <key name="blur-idle-buddies" type="b">
+      <default>true</default>
+      <summary>Mark Idle users differently</summary>
+      <description>Mark Idle users differently</description>
+    </key>
+
+    <key name="indicate-unknown-contacts" type="b">
+      <default>true</default>
+      <summary>Indicate unknown contacts</summary>
+      <description>Indicate unknown contacts</description>
+    </key>
+
+    <key name="convert-emoticons" type="b">
+      <default>false</default>
+      <summary>Convert text to emoticons</summary>
+      <description>Convert text matching emoticons as real emoticons</description>
+    </key>
+
+    <key name="return-sends-message" type="b">
+      <default>false</default>
+      <summary>Enter key sends the message</summary>
+      <description>Whether pressing Enter key sends the message</description>
+    </key>
+
+    <key name="request-sms-delivery-reports" type="b">
+      <default>true</default>
+      <summary>Request SMS delivery reports</summary>
+      <description>Whether to request delivery reports for outgoing SMS</description>
+    </key>
+
+    <key name="clear-out-stuck-sms" type="b">
+      <default>false</default>
+      <summary>Clear out stuck SMS</summary>
+      <description>Whether Chatty should clear out SMS that are stuck in receiving/unknown state</description>
+    </key>
+
+    <key name="experimental-features" type="b">
+      <default>false</default>
+      <summary>Enable experimental features</summary>
+      <description>Whether to enable experimental features</description>
+    </key>
+
+    <key name="window-maximized" type="b">
+      <default>false</default>
+      <summary>Window maximized</summary>
+      <description>Window maximized state</description>
+    </key>
+
+    <key name="window-size" type="(ii)">
+      <default>(360, 576)</default>
+      <summary>Window size</summary>
+      <description>Window size (width, height).</description>
+    </key>
+
+  </schema>
+
+<schema id="sm.puri.Chatty.pgp" path="/sm/puri/Chatty/pgp/">
+    <key name="user-id" type="s">
+      <default>""</default>
+      <summary>PGP user ID</summary>
+      <description>The user ID for PGP that Chatty will use for outgoing messages</description>
+    </key>
+
+    <key name="public-key-fingerprint" type="s">
+      <default>""</default>
+      <summary>Public Key Fingerprint</summary>
+      <description>The default keyid the remote side should use to encrypt messages to us</description>
+    </key>
+</schema>
+
+</schemalist>

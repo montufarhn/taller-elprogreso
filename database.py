@@ -17,7 +17,10 @@ DB_BASE_PATH = get_db_path()
 
 # Si existe la variable de entorno DATABASE_URL (en la nube), la usa.
 # Si no, usa SQLite localmente.
-SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(DB_BASE_PATH, 'taller.db')}")
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not SQLALCHEMY_DATABASE_URL or SQLALCHEMY_DATABASE_URL.strip() == "":
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(DB_BASE_PATH, 'taller.db')}"
 
 # Fix para SQLAlchemy: Render y otros proveedores usan "postgres://" pero se requiere "postgresql://"
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):

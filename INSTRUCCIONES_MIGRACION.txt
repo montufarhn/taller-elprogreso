@@ -1,0 +1,138 @@
+==========================================================================
+INSTRUCCIONES DE MIGRACIÓN: SUPABASE (CLOUD) A SQLITE (LOCAL)
+Proyecto: Taller Pro Auto - El Progreso
+==========================================================================
+
+Este documento describe los pasos para clonar la base de datos desde Supabase
+hacia un archivo SQLite local para su uso en red LAN.
+
+1. REQUISITOS PREVIOS
+--------------------------------------------------------------------------
+Asegúrese de tener instalado Python 3 y las librerías necesarias:
+
+pip install sqlalchemy psycopg2-binary
+
+2. CONFIGURACIÓN DE LA URL DE ORIGEN
+--------------------------------------------------------------------------
+Debe obtener su "Connection String" (URI) desde Supabase:
+Settings -> Database -> Connection String -> URI.
+
+La URL tiene el formato:
+postgresql://postgres.[ID]:[PASSWORD]@aws-0-us-west-2.pooler.supabase.com:6543/postgres
+
+3. ESTABLECER VARIABLE DE ENTORNO (SEGÚN SISTEMA OPERATIVO)
+--------------------------------------------------------------------------
+Abra una terminal en la carpeta del proyecto y ejecute el comando según su caso:
+
+A) LINUX / MACOS (Bash o Zsh):
+   Es CRUCIAL usar comillas simples (') para evitar problemas con caracteres 
+   especiales como '*' o '$'.
+
+   export DATABASE_URL='postgresql://postgres.anfjoncuhcvybmwddnqi:TallerAdmin2691*@aws-0-us-west-2.pooler.supabase.com:6543/postgres'
+
+   Para verificar: echo $DATABASE_URL
+
+B) WINDOWS (Símbolo del sistema - CMD):
+   set DATABASE_URL=postgresql://postgres.anfjoncuhcvybmwddnqi:TallerAdmin2691*@aws-0-us-west-2.pooler.supabase.com:6543/postgres
+
+   Para verificar: echo %DATABASE_URL%
+
+C) WINDOWS (PowerShell):
+   $env:DATABASE_URL="postgresql://postgres.anfjoncuhcvybmwddnqi:TallerAdmin2691*@aws-0-us-west-2.pooler.supabase.com:6543/postgres"
+
+   Para verificar: $env:DATABASE_URL
+
+4. EJECUCIÓN DEL SCRIPT DE MIGRACIÓN
+--------------------------------------------------------------------------
+Una vez configurada la variable en la misma terminal, ejecute:
+
+python migrate_to_sqlite.py
+
+El script realizará lo siguiente:
+1. Borrará el archivo 'taller.db' local si ya existe para evitar duplicados.
+2. Creará la estructura de tablas basada en 'models.py'.
+3. Copiará los registros en orden (Usuarios -> Clientes -> Vehículos -> etc)
+   para respetar la integridad de las llaves foráneas.
+
+5. USO DEL SISTEMA EN MODO LOCAL
+--------------------------------------------------------------------------
+Para que el sistema use la base de datos local 'taller.db', simplemente 
+NO defina la variable DATABASE_URL al iniciar el servidor (main.py).
+
+El archivo 'database.py' está configurado para:
+- Usar PostgreSQL si DATABASE_URL existe.
+- Usar SQLite (taller.db) si DATABASE_URL está vacía o no existe.
+
+6. ACCESO POR RED LOCAL (LAN)
+--------------------------------------------------------------------------
+Si desea que otros usuarios se conecten a su computadora (servidor):
+
+1. Identifique su IP Local:
+   - Linux/macOS: ifconfig o ip addr
+   - Windows: ipconfig
+   (Ejemplo: 192.168.1.15)
+
+2. Inicie el servidor escuchando en todas las interfaces:
+   uvicorn main:app --host 0.0.0.0 --port 8000
+
+3. Acceso desde otros dispositivos:
+   Los demás usuarios deben entrar desde su navegador a:
+   http://192.168.1.15:8000
+
+8. EJECUCIÓN CON BANDEJA DE SISTEMA (TRAY APP)
+--------------------------------------------------------------------------
+Para evitar que el usuario cierre accidentalmente el servidor, utilice:
+
+python tray_app.py
+
+Esto iniciará el servidor FastAPI en segundo plano y colocará un icono en 
+la bandeja del sistema (al lado del reloj). Desde allí puede:
+- Abrir el sistema en el navegador.
+- Reiniciar el servidor.
+- Salir de la aplicación (cerrando el servidor).
+
+9. CONFIGURACIÓN DE INICIO AUTOMÁTICO (STARTUP)
+--------------------------------------------------------------------------
+A) LINUX (Systemd Service):
+   1. Cree el archivo: sudo nano /etc/systemd/system/taller.service
+   2. Pegue el contenido:
+      [Service]
+      User=montu
+      WorkingDirectory=/home/montu/Documents/taller-elprogreso
+      ExecStart=/usr/bin/python3 tray_app.py
+      Restart=always
+   3. Habilite: sudo systemctl enable taller.service
+
+B) WINDOWS:
+   1. Presione Win+R y escriba: shell:startup
+   2. Cree un archivo 'iniciar_taller.bat' con:
+      @echo off
+      cd /d "C:\Ruta\A\Tu\Carpeta"
+      start /min python tray_app.py
+
+C) MACOS:
+   1. Vaya a Ajustes del Sistema > General > Items de inicio.
+   2. Agregue el script o el ejecutable generado a la lista.
+
+10. EMPAQUETADO PARA PRODUCCIÓN (PYINSTALLER)
+--------------------------------------------------------------------------
+Si desea generar un archivo .exe o binario único:
+
+pip install pyinstaller
+pyinstaller --noconsole --onefile --icon=Logo.ico tray_app.py
+
+El ejecutable resultante aparecerá en la carpeta 'dist'.
+
+7. SOLUCIÓN DE PROBLEMAS
+--------------------------------------------------------------------------
+Error: "Could not parse SQLAlchemy URL"
+Causa: La URL se escribió mal o la terminal no guardó la variable de entorno.
+Solución: Repita el paso 3 asegurándose de no dejar espacios cerca del signo '='.
+
+Error: "ModuleNotFoundError: No module named 'psycopg2'"
+Solución: Instale el driver con 'pip install psycopg2-binary'.
+
+--------------------------------------------------------------------------
+Documento generado para: montu@MontuHN
+Fecha: Octubre 2024
+==========================================================================

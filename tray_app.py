@@ -8,11 +8,11 @@ from pystray import Icon, Menu, MenuItem
 from PIL import Image
 
 # --- Configuration ---
-SERVER_EXE_NAME = "main.exe"  # Nombre del ejecutable del servidor FastAPI empaquetado
-INDEX_HTML_NAME = "index.html"   # Nombre del archivo HTML del frontend
+SERVER_EXE_NAME = "main.exe" if sys.platform == "win32" else "main"
+INDEX_HTML_NAME = ""             # FastAPI sirve el index en la raíz /
 APP_ICON_NAME = "Logo.ico"       # Cambiado a .ico para coincidir con el instalador
 SERVER_PORT = 8000          # Puerto donde se ejecuta el servidor FastAPI
-SERVER_URL = f"http://127.0.0.1:{SERVER_PORT}"
+SERVER_URL = f"http://localhost:{SERVER_PORT}"
 APP_TITLE = "Taller Pro Auto"
 
 server_process = None
@@ -35,21 +35,33 @@ def start_server():
         print("Server is already running.")
         return
 
-    print(f"Starting server: {SERVER_EXE_NAME}")
-    server_path = os.path.join(BASE_PATH, SERVER_EXE_NAME)
-    
-    if not os.path.exists(server_path):
-        print(f"Error: Server executable not found at {server_path}")
-        return
+    # Determinar el comando a ejecutar
+    if getattr(sys, 'frozen', False):
+        # Si es un ejecutable (PyInstaller)
+        server_path = os.path.join(BASE_PATH, SERVER_EXE_NAME)
+        if not os.path.exists(server_path):
+            print(f"Error: Server executable not found at {server_path}")
+            return
+        cmd = [server_path]
+    else:
+        # Si se ejecuta como script de Python
+        cmd = [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", str(SERVER_PORT)]
+
+    print(f"Starting server with command: {' '.join(cmd)}")
 
     try:
-        # Inicia el servidor como un proceso separado, sin ventana de consola
+        # Banderas especiales solo para Windows para ocultar la consola
+        kwargs = {}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+        
         server_process = subprocess.Popen(
-            [server_path],
-            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+            cmd,
             close_fds=True,
             stdout=subprocess.PIPE, # Redirige stdout para evitar consola
-            stderr=subprocess.PIPE  # Redirige stderr para evitar consola
+            stderr=subprocess.PIPE, # Redirige stderr para evitar consola
+            cwd=BASE_PATH,          # Asegura que el servidor inicie en la carpeta correcta
+            **kwargs
         )
         print(f"Server started with PID: {server_process.pid}")
         # Dale un momento al servidor para que se inicie
