@@ -73,6 +73,7 @@ Si desea que otros usuarios se conecten a su computadora (servidor):
    (Ejemplo: 192.168.1.15)
 
 2. Inicie el servidor escuchando en todas las interfaces:
+   python -m uvicorn main:app --host 0.0.0.0 --port 8000
    uvicorn main:app --host 0.0.0.0 --port 8000
 
 3. Acceso desde otros dispositivos:
